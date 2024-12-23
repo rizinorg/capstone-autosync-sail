@@ -36,7 +36,7 @@ let id_to_str id =
 
 let id_to_str_noexn id =
   let (Id_aux (i, loc)) = id in
-  match i with Id s -> s | Operator _ -> ""
+  match i with Id s -> s | Operator o -> "<Infix Operator " ^ o ^ ">"
 
 let convert_bitv_size_to_int ?(throw_on_unsupported_size_exprs = true) size =
   let (A_aux (a, _)) = size in
@@ -165,3 +165,56 @@ let destructure_string_mapping mapping_clauses =
             ^ stringify_sail_source_loc loc
             )
   )
+
+let destructure_union_arglist args =
+  let (P_aux (args_pat, (l, _))) = args in
+  match args_pat with
+  | P_app (id, arg_names) -> (
+      let args_tuple = Option.get (get_sole_element_or_none arg_names) in
+      match args_tuple with
+      | P_aux (P_tuple args, (l, _)) ->
+          ( id_to_str id,
+            List.map
+              (fun (P_aux (p, _)) ->
+                match p with
+                | P_id i -> id_to_str i
+                | _ ->
+                    failwith
+                      ("Trying to destructure a union arglist with non-id \
+                        parameter @ "
+                      ^ stringify_sail_source_loc l
+                      )
+              )
+              args
+          )
+      | _ -> (id_to_str id, [])
+    )
+  | _ ->
+      failwith
+        ("Trying to destructure a non-union arglist @ "
+        ^ stringify_sail_source_loc l
+        )
+
+let destructure_id_arglist args =
+  let (P_aux (args, (l, _))) = args in
+  match args with
+  | P_tuple args ->
+      List.map
+        (fun (P_aux (p, (l, _))) ->
+          match p with
+          | P_id i -> id_to_str i
+          | P_typ (_, P_aux (P_id i, _)) -> id_to_str i
+          | _ ->
+              failwith
+                ("Trying to destructure an id arglist but found a non-id \
+                  parameter @ "
+                ^ stringify_sail_source_loc l
+                )
+        )
+        args
+  | P_typ (_, P_aux (P_id i, _)) -> [id_to_str i]
+  | _ ->
+      failwith
+        ("Trying to destructure an non-id arglist @ "
+        ^ stringify_sail_source_loc l
+        )

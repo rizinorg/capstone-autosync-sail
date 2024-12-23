@@ -16,20 +16,20 @@ let binary_stream_c_parameter = "binary_stream"
 
 let includes = ["<stdint.h>"; "<stddef.h>"; "<string.h>"]
 
-let ast_type_filename = "riscv_ast.gen.inc"
+let ast_type_filename = "RISCVAst.gen.inc"
 
-let decode_logic_filename = "riscv_decode.gen.inc"
+let decode_logic_filename = "RISCVDecode.gen.inc"
 
-let compressed_decode_logic_filename = "riscv_decode_compressed.gen.inc"
+let compressed_decode_logic_filename = "RISCVDecodeCompressed.gen.inc"
 
 let identifier_prefix = "RISCV_"
 
 let ast_assembly_mapping = "assembly"
 
-let assembler_filename = "riscv_ast2str.gen.inc"
+let assembler_filename = "RISCVAst2Str.gen.inc"
 
-let ast2str_tables_filename = "riscv_ast2str_tbls.gen.inc"
+let ast2str_tables_filename = "RISCVAst2StrTbls.gen.inc"
 
-let instr_types_filename = "riscv_insn.gen.inc"
+let instr_types_filename = "RISCVInsn.gen.inc"
 
-let instr_types_mapping_filename = "riscv_insn_mapping.gen.inc"
+let instr_types_mapping_filename = "RISCVInsnMappings.gen.inc"
