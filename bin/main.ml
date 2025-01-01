@@ -11,7 +11,7 @@ open Stringify
 open Printexc
 
 let get_generator_comment () =
-  let sail_hash = List.nth (Utils.read_file "sail.hash.txt") 0 in
+  let sail_hash = List.nth (Utils.read_file "conf/hash.txt") 0 in
   let delimiter =
     "======================================================================="
   in
@@ -119,7 +119,7 @@ let asm = Gen_assembler.gen_asm ast analysis
 let asm_str, tables_str = Stringify.stringify_assembler asm typdefwalker
 
 let gen_instr_types_conf =
-  Gen_instr_types.read_config "sail.instr_types_excluded_enums.txt"
+  Gen_instr_types.read_config "conf/instruction-types/excluded_enums.txt" 
 
 let instr_types = Gen_instr_types.gen_instr_types analysis gen_instr_types_conf
 

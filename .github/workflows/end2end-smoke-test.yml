@@ -19,7 +19,7 @@ jobs:
 
             - name: Get the hash of the riscv sail model to fetch
               id: sail-riscv-model-get-hash
-              run: cd generator && echo "h=$(cat sail.hash.txt)" >> "$GITHUB_OUTPUT" && echo "Fetching version $(cat sail.hash.txt) of the riscv sail model"
+              run: cd generator && echo "h=$(cat conf/hash.txt)" >> "$GITHUB_OUTPUT" && echo "Fetching version $(cat sail.hash.txt) of the riscv sail model"
             
             - name: Fetch the riscv sail model 
               uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
                 cd generator && source ~/.bash_profile                
                 mv riscv_disasm old_output
 
-                dune exec --profile release -- riscv_disasm_from_sail -f sail.filepaths.txt
+                dune exec --profile release -- riscv_disasm_from_sail -f conf/sail-files-paths.txt
             
             - name: Installing clang-format to automatically format the source code
               run: |

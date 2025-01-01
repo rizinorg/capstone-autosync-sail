@@ -1,4 +1,4 @@
-This is the repo of the generator tool riscv_disasm_from_sail, a tool that ingests the https://github.com/riscv/sail-riscv executable model of the RISCV instruction set and generates most of a disassembler for the architecture.
+This is the repo of the generator tool capstone-autosync-sail, a tool that ingests the https://github.com/riscv/sail-riscv executable model of the RISCV instruction set and generates most of a disassembler for the architecture.
 
 # What is Sail ?
 
@@ -71,7 +71,7 @@ In commands:
 
 ```bash
 git clone https://github.com/rizinorg/capstone-autosync-sail.git
-cd riscv_disasm_from_sail && source ~/.bash_profile
+cd capstone-autosync-sail && source ~/.bash_profile
 export OPAMCONFIRMLEVEL=yes
 opam update
 
@@ -86,7 +86,7 @@ It’s very important to fix the exact Sail version, as above, because Sail is i
 
 Because Sail is a large language and this tool is *not* a general purpose Sail→C compiler, only a subset of Sail’s features is actually supported. More generally, the tool also makes some specific assumptions about its input code, for example that the logic to stringify instructions is a mapping (and not, e.g., a function). Taken together, those 2 facts imply that the input sail-riscv model could break the tool if it violates those assumptions or uses more Sail features than what the tool supports.
 
-Therefore, `riscv_disasm_from_sail` versions its input. In `sail.hash.txt`, there is a git sha hash that states the latest sail-riscv version that the tool ran successfully on. It’s generally preferable for this version to not lag the sail-riscv model latest commit on master by too much (~1 month worth of commits are the limits), and it’s a bug in `riscv_disasm_from_sail` if it crashes on the latest master commit. 
+Therefore, `capstone-autosync-sail` versions its input. In `sail.hash.txt`, there is a git sha hash that states the latest sail-riscv version that the tool ran successfully on. It’s generally preferable for this version to not lag the sail-riscv model latest commit on master by too much (~1 month worth of commits are the limits), and it’s a bug in `capstone-autosync-sail` if it crashes on the latest master commit. 
 
 To get the input model, run the following in the parent directory of the tool:
 
@@ -101,14 +101,14 @@ git reset --hard $(cat sail.hash.txt)
 Finally, run the following command from the generator’s directory to obtain the generated C code:
 
 ```bash
-source ~/.bash_profile && dune exec --profile release -- riscv_disasm_from_sail -f sail.filepaths.txt
+source ~/.bash_profile && dune exec --profile release -- riscv_disasm_from_sail -f conf/sail-files-paths.txt
 ```
 
 ## 5- Or just copy riscv_disasm
 
 The outputs of the generator for the model version specified by sail.hash.txt is also kept in this repo, this is a quality-of-life feature for 2 reasons: 
 
-1- If a commit to `riscv_disasm_from_sail` changed the generated code, the diff to the generated code is accompanied by the diff to the generator’s logic as an explanation 
+1- If a commit to `capstone-autosync-sail` changed the generated code, the diff to the generated code is accompanied by the diff to the generator’s logic as an explanation 
 
 2- Users can simply copy the generated code instead of going through steps 1..4 above
 
@@ -116,12 +116,12 @@ As a downside, if the generated C code is used elsewhere, such as in a RISCV mod
 
 # Updating the input model version
 
-To update the version of sail-riscv, you have to update sail.filepaths.txt and sail.hash.txt. To update the first, run :
+To update the version of sail-riscv, you have to update conf/sail-files-paths.txt and conf/hash.txt. To update the first, run :
 
 ```bash
 tools/riscv-ls.sh <path-to-riscv-model>
 ```
 
-This will (ab)use the makefile in the sail-riscv repo to print an ordered list of all files that comprise the model. This is also the procedure to follow if the sail-riscv directory is not the direct filetree-sibling of the riscv_disasm_from_sail directory, as the paths in the committed sail.filepaths.txt assume this relationship, but you can override those paths by running the above command and giving it any valid path to the sail-riscv model directory.
+This will (ab)use the makefile in the sail-riscv repo to print an ordered list of all files that comprise the model. This is also what should be done if the sail-riscv directory downloaded happens to not be the direct filesystem-sibling of the capstone-autosync-sail directory, as the paths in the committed conf/sail-files-paths.txt assume this relationship. You can override the committed capstone-autosync-sail paths by running the above command on any valid path to the sail-riscv model directory. (Please don't commit the resulting conf/sail-files.paths.txt)
 
-Updating the hash must be done manually as of yet, query the sail-riscv repo version (e.g. using git log) and paste the version in sail.hash.txt.
+Updating the hash must be done manually as of now, query the sail-riscv repo version (e.g. using git log) and paste the version in sail.hash.txt.

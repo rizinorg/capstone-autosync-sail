@@ -19,7 +19,7 @@ echo 'print-% : ; @echo $* = $($*)' >> "$MKFILE"
 TOOL_ROOT=$PWD
 (
 cd $SAIL_RISCV_ROOT
-make print-SAIL_SRCS | xargs -n 1 | grep ".sail" | xargs -I {} echo "$SAIL_RISCV_ROOT"{} > "$TOOL_ROOT/sail.filepaths.txt"
+make print-SAIL_SRCS | xargs -n 1 | grep ".sail" | xargs -I {} echo "$SAIL_RISCV_ROOT"{} > "$TOOL_ROOT/conf/sail-files-paths.txt"
 )
 
 # remove instrumentation from the makefile again to avoid version control headache
