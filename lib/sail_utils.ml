@@ -213,6 +213,7 @@ let destructure_id_arglist args =
         )
         args
   | P_typ (_, P_aux (P_id i, _)) -> [id_to_str i]
+  | P_id i -> [id_to_str i]
   | _ ->
       failwith
         ("Trying to destructure an non-id arglist @ "

@@ -60,7 +60,8 @@ let write_c_file ?(additional_includes = []) name code =
            "#include " ^ delimiter ^ i ^ delimiter
          )
          incs
-      ) ^ "\n\n"
+      )
+    ^ "\n\n"
   in
   let include_string = mk_include_lines includes in
   let additional_includes_string = mk_include_lines additional_includes in
@@ -150,7 +151,12 @@ let () =
 let () =
   write_c_file assembler_filename asm_str
     ~additional_includes:
-      [ast_type_filename; ast2str_tables_filename; "RISCVHelpersAst2Str.h"; "SStream.h"]
+      [
+        ast_type_filename;
+        ast2str_tables_filename;
+        "RISCVHelpersAst2Str.h";
+        "SStream.h";
+      ]
 
 let () =
   write_c_file ast2str_tables_filename tables_str

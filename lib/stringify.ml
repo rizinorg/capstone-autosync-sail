@@ -416,7 +416,12 @@ let stringify_instr_types instr_types typedef_walker =
       prnt ("[" ^ case_name ^ "] = {");
       prnt
         (String.concat ","
-           (List.map (fun t -> "RISCV_INSN_" ^ (strip_prefix_if_exists identifier_prefix t) ) types)
+           (List.map
+              (fun t ->
+                "RISCV_INSN_" ^ strip_prefix_if_exists identifier_prefix t
+              )
+              types
+           )
         );
       prnt "},";
 
