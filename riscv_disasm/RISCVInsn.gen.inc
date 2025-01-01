@@ -8,7 +8,6 @@
 /* ------------------------------------------------------------------- */
 /* Copyright © 2024 moste00 <ubermenchun@gmail.com>*/
 /* SPDX-License-Identifier: BSD-3-Clause*/
->>>>>>> 9c60d95 (cleaning up, modify stringify to use SStream, and register operands inference):riscv_disasm/RISCVInsn.gen.inc
 /*=======================================================================*/
 
 #ifndef __RISCVINSN_GEN_INC__
