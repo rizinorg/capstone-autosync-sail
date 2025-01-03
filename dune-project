@@ -1,26 +1,26 @@
 (lang dune 3.15)
 
-(name riscv_disasm_from_sail)
+(name capstone-autosync-sail)
 
 (generate_opam_files true)
 
 (source
- (github moste00/riscv_disasm_from_sail))
+ (github rizinorg/capstone-autosync-sail))
 
-(authors "Mostafa Kamal")
+(authors "Mostafa M. Kamal (moste00)")
 
-(maintainers "Mostafa Kamal")
+(maintainers "Mostafa M. Kamal (moste00)")
 
-(license LICENSE)
+(license BSD-3-Clause)
 
 (documentation https://url/to/documentation)
 
 (package
- (name riscv_disasm_from_sail)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (name capstone-autosync-sail)
+ (synopsis "A tool that generates a capstone disassembler module for RISC-V ISA from the Sail ISA description for RISC-V")
+ (description "The tool depends on the Sail ISA description language compiler (which is an Ocaml library) to ingest the Sail model of RISC-V and generate a Capstone-compliant disassembler")
  (depends ocaml dune (libsail (= 0.18)))
  (tags
-  (topics "to describe" your project)))
+  (RISCV Disassembly Assembly Capstone "Reverse-Engineering" Rizin Sail ISA)))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

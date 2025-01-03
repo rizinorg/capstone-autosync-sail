@@ -1,4 +1,4 @@
-open Assembler
+open Stringifier
 
 open Sail_ast_processor
 open Sail_ast_foreach
@@ -11,12 +11,10 @@ open Sail_analysis
 
 open Libsail
 open Ast
-open Type_check
 
-type assembler_gen_iteration_state = {
+type stringifier_gen_iteration_state = {
   analysis : sail_analysis_result;
-  mutable assembly_rules :
-    (case_name, (subcase_condition * tostr_logic list) list) Hashtbl.t;
+  mutable stringifier : (case_name, subclause list) Hashtbl.t;
   (* Enforces the order of ast union cases on the assembly_rules hash table,
      this is necessary as hash tables aren't ordered *)
   mutable case_names : string list;
@@ -39,7 +37,7 @@ let get_arg_specializations analysis pats =
 let case_arg_to_id case_arg =
   match case_arg with MP_aux (MP_id i, _) -> Some i | _ -> None
 
-let case_args_to_intrinsic_logic_args analysis arg_names_to_indices args =
+let case_args_to_intrinsic_logic_args arg_names_to_indices args =
   let case_arg_to_intrinsic_logic_arg arg =
     match arg with
     | MP_aux (MP_id id, _) ->
@@ -181,8 +179,7 @@ let create_to_str_from_pattern analysis arg_names_to_indices pat =
             else
               Intrinsic_tostr_logic
                 ( name,
-                  case_args_to_intrinsic_logic_args analysis
-                    arg_names_to_indices args
+                  case_args_to_intrinsic_logic_args arg_names_to_indices args
                 )
           )
         )
@@ -203,7 +200,7 @@ let create_to_strs analysis arg_names_to_indices right =
       | _ -> failwith "+__+"
     )
 
-let gen_assembly_rule state _ id _ left right =
+let gen_stringifier_rule state _ id _ left right =
   if id_to_str id = ast_assembly_mapping then (
     let case_name, subcase_cond, arg_names_to_indices =
       get_case state.analysis left
@@ -212,9 +209,9 @@ let gen_assembly_rule state _ id _ left right =
     let subcase = (subcase_cond, tostr) in
 
     (* does the case already exist ? *)
-    if Hashtbl.mem state.assembly_rules case_name then (
+    if Hashtbl.mem state.stringifier case_name then (
       (* if yes, add a subcase to already existing subcases *)
-      let subcases = Hashtbl.find state.assembly_rules case_name in
+      let subcases = Hashtbl.find state.stringifier case_name in
 
       (* But only if the current subcase isn't the second unspecialized subcase encountered *)
       let is_unspecialized = Option.is_none subcase_cond in
@@ -222,38 +219,34 @@ let gen_assembly_rule state _ id _ left right =
         is_unspecialized
         && List.exists (fun (cond, _) -> Option.is_none cond) subcases
       then
-        (* Error, a case can't have more than 1 unspecialized subcases *)
-        (* Silently ignore *)
-        ()
+        failwith "Error, a case can't have more than 1 unspecialized subcases"
       else (
         let subcases = subcase :: subcases in
-        Hashtbl.replace state.assembly_rules case_name subcases
+        Hashtbl.replace state.stringifier case_name subcases
       )
     )
     else (
       (* this is the first time the case is encountered *)
-      Hashtbl.add state.assembly_rules case_name [subcase];
+      Hashtbl.add state.stringifier case_name [subcase];
       state.case_names <- case_name :: state.case_names
     )
   )
 
-let gen_asm ast analysis =
-  let state =
-    { analysis; assembly_rules = Hashtbl.create 500; case_names = [] }
+let gen_stringifier ast analysis =
+  let state = { analysis; stringifier = Hashtbl.create 500; case_names = [] } in
+  let stringifier_gen_processor =
+    { default_processor with process_mapping_bidir_clause = gen_stringifier_rule }
   in
-  let assembler_gen_processor =
-    { default_processor with process_mapping_bidir_clause = gen_assembly_rule }
-  in
-  foreach_node ast assembler_gen_processor state;
+  foreach_node ast stringifier_gen_processor state;
 
-  let assembler = ref [] in
+  let stringifier = ref [] in
   (* No need to reverse case_names, the correct effect is achieved by
      iterating case names in reverse (as is their order in case_names)
      and creating the assembler entries also in reverse *)
   List.iter
     (fun case_name ->
-      let subcases = Hashtbl.find state.assembly_rules case_name in
-      assembler := (case_name, List.rev subcases) :: !assembler
+      let subcases = Hashtbl.find state.stringifier case_name in
+      stringifier := (case_name, List.rev subcases) :: !stringifier
     )
     state.case_names;
-  !assembler
+  !stringifier

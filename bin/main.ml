@@ -2,11 +2,16 @@ open Libsail
 open Type_check
 open Ast
 
-open Riscv_disasm_from_sail
+open Capstone_autosync_sail
 open Constants
 open Gen_decoder
-open Gen_assembler
-open Stringify
+open Gen_stringifier
+
+open C_codegen
+open Ccodegen_clike_typedef
+open Ccodegen_decode_procedure
+open Ccodegen_stringifier
+open Ccodegen_instr_types
 
 open Printexc
 
@@ -99,7 +104,7 @@ let _, ast, types, side_effects =
 
 let ctypedefs, typdefwalker = Gen_clike_typedef.gen_def ast
 
-let ctypedefs_str = Stringify.stringify_typdef ctypedefs
+let ctypedefs_str = stringify_typdef ctypedefs
 
 let analysis = Sail_analysis.analyze ast types
 
@@ -114,17 +119,17 @@ let compressed_dec_str =
   stringify_decode_procedure ~c_proc_name:"decode_compressed" compressed_dec
     typdefwalker
 
-let asm = Gen_assembler.gen_asm ast analysis
+let asm = gen_stringifier ast analysis
 
-let asm_str, tables_str = Stringify.stringify_assembler asm typdefwalker
+let asm_str, tables_str = assembler_to_c asm typdefwalker
 
 let gen_instr_types_conf =
-  Gen_instr_types.read_config "conf/instruction-types/excluded_enums.txt" 
+  Gen_instr_types.read_config "conf/instruction-types/excluded_enums.txt"
 
 let instr_types = Gen_instr_types.gen_instr_types analysis gen_instr_types_conf
 
 let instr_types_str, instr_types_mapping_str =
-  Stringify.stringify_instr_types instr_types typdefwalker
+  instr_types_to_c instr_types typdefwalker
 
 let _ = Gen_operand_info.gen_operand_info ast analysis
 

@@ -1,0 +1,3 @@
+(library
+ (name c_codegen)
+ (libraries capstone_autosync_sail))

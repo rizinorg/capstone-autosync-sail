@@ -1,4 +1,4 @@
 (executable
- (public_name riscv_disasm_from_sail)
+ (public_name capstone_autosync_sail)
  (name main)
- (libraries riscv_disasm_from_sail))
+ (libraries capstone_autosync_sail c_codegen))

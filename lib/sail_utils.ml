@@ -36,7 +36,10 @@ let id_to_str id =
 
 let id_to_str_noexn id =
   let (Id_aux (i, loc)) = id in
-  match i with Id s -> s | Operator o -> "<Infix Operator " ^ o ^ ">"
+  match i with
+  | Id s -> s
+  | Operator o ->
+      "<Infix Operator " ^ o ^ " @ " ^ stringify_sail_source_loc loc ^ ">"
 
 let convert_bitv_size_to_int ?(throw_on_unsupported_size_exprs = true) size =
   let (A_aux (a, _)) = size in

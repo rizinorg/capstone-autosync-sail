@@ -6,16 +6,15 @@ open Sail_ast_processor
 open Sail_utils
 open Sail_analysis
 
-open Utils
-
 (* The four register files in RISCV and its standard extensions *)
 (* The float and double register files overlap, but they should still
    be counted as seperate for max clarity of information provided
    by the generated disassembler *)
 type regfile = Base | Float | Double | Vector
-type operand = Reg of int * regfile
-             | Memory of int * int * regfile
-             | Imm of int 
+type operand =
+  | Reg of int * regfile
+  | Memory of int * int * regfile
+  | Imm of int
 
 type operand_info = (string, operand list) Hashtbl.t
 
@@ -55,8 +54,8 @@ let infer_regfile_getter_or_setter name args operand_names =
       regfile
   | _ -> None
 
-let rec infer_operand_types regidx_functions_registery operand_names fun_body
-    ?(flag = false) =
+let rec infer_operand_types ?(flag = false) regidx_functions_registery
+    operand_names fun_body =
   let operand_types = Hashtbl.create (List.length operand_names) in
   let infer_regfile _ name args =
     match infer_regfile_getter_or_setter name args operand_names with
@@ -109,7 +108,8 @@ and infer_regfile_across_function_call regidx_functions_registery operand_names
         (fun p a -> print_endline (a ^ " ->BECOMES-> " ^ p))
         params_to_args;
       let result =
-        infer_operand_types regidx_functions_registery renamed_operands body ~flag:false
+        infer_operand_types regidx_functions_registery renamed_operands body
+          ~flag:false
       in
       Hashtbl.iter
         (fun ridx_name regfile ->

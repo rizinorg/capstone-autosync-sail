@@ -1,2 +1,0 @@
-(test
- (name test_riscv_disasm_from_sail))

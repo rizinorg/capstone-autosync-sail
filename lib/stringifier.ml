@@ -18,10 +18,10 @@ type tostr_logic =
   | Struct2str of string * int * struct2str_table
   | Intrinsic_tostr_logic of string * intrinsic_logic_arg list
 
-type subcase_condition = (int * string) option
+type subclause_condition = (int * string) option
 
-type subcase = subcase_condition * tostr_logic list
+type subclause = subclause_condition * tostr_logic list
 
-type assembler_clause = case_name * subcase list
+type clause = case_name * subclause list
 
-type assembler = assembler_clause list
+type stringifier = clause list

@@ -8,4 +8,4 @@ open Sail_analysis
 
 val gen_decoder : string -> (tannot, env) ast -> sail_analysis_result -> decoder
 
-val gen_decode_proc : decoder -> decproc
+val gen_decode_proc : decoder -> decode_procedure

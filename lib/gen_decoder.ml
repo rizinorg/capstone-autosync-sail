@@ -23,7 +23,7 @@ type decoder_gen_iteration_state = {
 let lit_to_consequence_body lit =
   let (L_aux (literal, loc)) = lit in
   match literal with
-  | L_bin l | L_hex l -> Push (Bv_const (bitv_literal_to_str lit))
+  | L_bin _ | L_hex _ -> Push (Bv_const (bitv_literal_to_str lit))
   | L_true -> Push (Bool_const true)
   | L_false -> Push (Bool_const false)
   | _ -> failwith ("Unsupported literal @ " ^ stringify_sail_source_loc loc)
@@ -40,7 +40,7 @@ let vec_concat_to_consequence_body slices =
          match slice with
          | MP_lit (L_aux (lit, _) as l) -> (
              match lit with
-             | L_bin s | L_hex s -> Bv_const (bitv_literal_to_str l)
+             | L_bin _ | L_hex _ -> Bv_const (bitv_literal_to_str l)
              | _ -> failwith "UNREACHABLE"
            )
          | MP_id i -> Binding (id_to_str i)
@@ -205,7 +205,7 @@ let calculate_instr_len state _ id _ typ =
     state.instr_length <- Some (calculate_instr_length typ)
   )
 
-let gen_decode_rule decode_mappig_name state _ id tannot left right =
+let gen_decode_rule decode_mappig_name state _ id _ left right =
   if id_to_str id = decode_mappig_name then (
     let bindings, consequences = bind_args_and_create_consequences state left in
     let conditions = create_conditions state right bindings in
@@ -254,7 +254,7 @@ let calculate_offsets conds =
         | Map_bind (len, _, _)
         | Struct_map_bind (len, _, _, _) -> (
             match roffs with
-            | curr :: rest -> (len + curr) :: roffs
+            | curr :: _ -> (len + curr) :: roffs
             | [] -> failwith "UNREACHABLE"
           )
       )

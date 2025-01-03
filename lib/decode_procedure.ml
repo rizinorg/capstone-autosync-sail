@@ -1,5 +1,4 @@
 open Sail_values
-open Decoder
 
 type bv_val = string
 type bv_index = int
@@ -33,4 +32,4 @@ type stmt =
   | End_rule
 (* delineate the beginning and end of an instruction group that implement one declarative rule*)
 
-type decproc = Proc of stmt
+type decode_procedure = Proc of stmt

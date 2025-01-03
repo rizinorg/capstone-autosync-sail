@@ -35,7 +35,7 @@ let foreach_mapdef node proc state =
     )
     clauses
 
-let foreach_let node proc state = match node with LB_aux (child, _) -> ()
+let foreach_let node _ _ = match node with LB_aux (_, _) -> ()
 
 let foreach_typedef_aux node proc state =
   match node with
