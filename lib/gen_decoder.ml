@@ -1,11 +1,11 @@
 open Sail_ast_foreach
 open Sail_ast_processor
 open Sail_utils
+
 open Utils
 open Constants
 open Sail_values
 open Decoder
-open Decode_procedure
 open Sail_analysis
 
 open Libsail
@@ -59,6 +59,7 @@ let bind_args_and_create_consequences state l =
       match pat with
       | MP_app (union_case_id, union_case_args) ->
           let case_name = id_to_str union_case_id in
+          print_endline ("\n+++++++++++++++++++++++++" ^ case_name);
           let bodies =
             match union_case_args with
             | [MP_aux (MP_lit (L_aux (L_unit, _)), _)] -> []
@@ -92,96 +93,338 @@ let bind_args_and_create_consequences state l =
              constructor"
     )
 
-let create_conditions state r arg_bindings =
-  let (MPat_aux (right, _)) = r in
-  match right with
-  | MPat_pat p | MPat_when (p, _) -> (
-      let (MP_aux (pat, _)) = p in
-      match pat with
-      | MP_id id -> [Bind (Option.get state.instr_length, id_to_str id)]
-      | MP_vector_concat pats ->
-          List.map
-            (fun p ->
-              let (MP_aux (pat, (loc, _))) = p in
-              match pat with
-              | MP_id id ->
-                  let idstr = id_to_str id in
-                  let maybe_size = Hashtbl.find arg_bindings idstr in
+let create_conditions_from_pat state p arg_bindings =
+  let (MP_aux (pat, _)) = p in
+  match pat with
+  | MP_id id -> [Bind (Option.get state.instr_length, id_to_str id)]
+  | MP_vector_concat pats ->
+      List.map
+        (fun p ->
+          let (MP_aux (pat, (loc, _))) = p in
+          match pat with
+          | MP_id id ->
+              let idstr = id_to_str id in
+              let maybe_size = Hashtbl.find arg_bindings idstr in
+              let size = get_some_or_failwith maybe_size "UNREACHABLE" in
+              Bind (size, idstr)
+          | MP_typ (pat, typ) ->
+              let size =
+                match typ with
+                | Typ_aux (Typ_app (id, args), _)
+                  when id_to_str id = "bitvector" || id_to_str id = "bits" ->
+                    sail_bitv_size_to_int (List.nth args 0)
+                | Typ_aux (Typ_id id, _) ->
+                    let sz =
+                      get_size_of_bv_synonym state.analysis (id_to_str id)
+                    in
+                    get_some_or_failwith sz
+                      "Type annotation is a named type not synonymous with \
+                       bitvec "
+                | _ ->
+                    failwith
+                      ("Type annotation cant be non-bitvec @ "
+                      ^ stringify_sail_source_loc loc
+                      )
+              in
+              let idstr =
+                match pat with
+                | MP_aux (MP_id id, _) -> id_to_str id
+                | _ -> failwith "Cant annotate non-id"
+              in
+              Bind (size, idstr)
+          | MP_lit lit ->
+              let const = bitv_literal_to_str lit in
+              let size = bitv_literal_size lit in
+              Assert (size, const)
+          | MP_app (id, args) -> (
+              let mapping_name = id_to_str id in
+              let arg_name =
+                match args with
+                | [MP_aux (MP_id i, _)] -> id_to_str i
+                | _ ->
+                    failwith
+                      "Unsupported mapping pattern, multiple arguments are not \
+                       supported"
+              in
+              let bv_to_enum =
+                get_bv2enum_mapping state.analysis mapping_name
+              in
+              match bv_to_enum with
+              | Some bv2enum ->
+                  let maybe_size = Hashtbl.find arg_bindings arg_name in
                   let size = get_some_or_failwith maybe_size "UNREACHABLE" in
-                  Bind (size, idstr)
-              | MP_typ (pat, typ) ->
-                  let size =
-                    match typ with
-                    | Typ_aux (Typ_app (id, args), _)
-                      when id_to_str id = "bitvector" || id_to_str id = "bits"
-                      ->
-                        sail_bitv_size_to_int (List.nth args 0)
-                    | Typ_aux (Typ_id id, _) ->
-                        let sz =
-                          get_size_of_bv_synonym state.analysis (id_to_str id)
-                        in
-                        get_some_or_failwith sz
-                          "Type annotation is a named type not synonymous with \
-                           bitvec "
-                    | _ ->
-                        failwith
-                          ("Type annotation cant be non-bitvec @ "
-                          ^ stringify_sail_source_loc loc
-                          )
-                  in
-                  let idstr =
-                    match pat with
-                    | MP_aux (MP_id id, _) -> id_to_str id
-                    | _ -> failwith "Cant annotate non-id"
-                  in
-                  Bind (size, idstr)
-              | MP_lit lit ->
-                  let const = bitv_literal_to_str lit in
-                  let size = bitv_literal_size lit in
-                  Assert (size, const)
-              | MP_app (id, args) -> (
-                  let mapping_name = id_to_str id in
-                  let arg_name =
-                    match args with
-                    | [MP_aux (MP_id i, _)] -> id_to_str i
-                    | _ ->
-                        failwith
-                          "Unsupported mapping pattern, multiple arguments are \
-                           not supported"
-                  in
-                  let bv_to_enum =
-                    get_bv2enum_mapping state.analysis mapping_name
-                  in
-                  match bv_to_enum with
-                  | Some bv2enum ->
+                  Map_bind (size, bv2enum, arg_name)
+              | None -> (
+                  match get_bv2struct_mapping state.analysis mapping_name with
+                  | Some (struct_name, bv_to_struct) ->
                       let maybe_size = Hashtbl.find arg_bindings arg_name in
                       let size =
                         get_some_or_failwith maybe_size "UNREACHABLE"
                       in
-                      Map_bind (size, bv2enum, arg_name)
-                  | None -> (
-                      match
-                        get_bv2struct_mapping state.analysis mapping_name
-                      with
-                      | Some (struct_name, bv_to_struct) ->
-                          let maybe_size = Hashtbl.find arg_bindings arg_name in
-                          let size =
-                            get_some_or_failwith maybe_size "UNREACHABLE"
-                          in
-                          Struct_map_bind
-                            (size, struct_name, bv_to_struct, arg_name)
-                      | None ->
-                          failwith
-                            ("Mapping " ^ mapping_name
-                           ^ " is neither a bv<->enum nor a bv<->struct mapping"
-                            )
-                    )
+                      Struct_map_bind (size, struct_name, bv_to_struct, arg_name)
+                  | None ->
+                      failwith
+                        ("Mapping " ^ mapping_name
+                       ^ " is neither a bv<->enum nor a bv<->struct mapping"
+                        )
                 )
-              | _ -> failwith ""
             )
-            (List.rev pats)
-      | _ -> failwith "-"
+          | _ ->
+              failwith
+                ("Unsupported decode condition @ "
+                ^ stringify_sail_source_loc loc
+                )
+        )
+        (List.rev pats)
+  | _ -> failwith "Expected a vector expression"
+
+let exp_to_operand (E_aux (e, _)) =
+  match e with
+  | E_id varname -> Some (Id_or_funcall (id_to_str varname, []))
+  | E_lit (L_aux (L_num n, _)) -> Some (Number (Nat_big_num.to_int n))
+  | E_app (funname, args) -> (
+      try
+        let argnames =
+          List.map
+            (fun (E_aux (a, _)) ->
+              match a with
+              | E_id varname -> id_to_str varname
+              | _ -> invalid_arg "Args must be all single identifiers"
+            )
+            args
+        in
+        Some (Id_or_funcall (id_to_str funname, argnames))
+      with Invalid_argument _ -> None
     )
+  | _ -> None
+
+let destructure_exps_to_int_operands es =
+  match es with
+  | [o1; o2] -> (
+      match (exp_to_operand o1, exp_to_operand o2) with
+      | None, _ -> None
+      | _, None -> None
+      | Some op1, Some op2 -> Some (op1, op2)
+    )
+  | _ -> None
+
+let flatten_bv_concat_args a1 a2 =
+  let rec flatten_arg (E_aux (a, _)) =
+    match a with
+    | E_id i -> [id_to_str i]
+    | E_lit (L_aux (L_bin _, _) as lit) | E_lit (L_aux (L_hex _, _) as lit) ->
+        [bitv_literal_to_str lit]
+    | E_app (i, [a1; a2]) when id_to_str i = "bitvector_concat" ->
+        flatten_arg a1 @ flatten_arg a2
+    | _ -> failwith "UNREACHABLE"
+  in
+  flatten_arg a1 @ flatten_arg a2
+
+let destructure_exps_to_bitv_operands es =
+  match es with
+  | [E_aux (E_id id, _); E_aux (E_lit l, _)]
+  | [E_aux (E_lit l, _); E_aux (E_id id, _)] -> (
+      let name = id_to_str id in
+      match l with
+      | L_aux (L_hex _, _) | L_aux (L_bin _, _) ->
+          Some ([name], bitv_literal_to_str l)
+      | _ -> None
+    )
+  | [E_aux (E_id id1, _); E_aux (E_id id2, _)] ->
+      Some ([id_to_str id1], id_to_str id2)
+  | [E_aux (E_app (i, args), _); op] | [op; E_aux (E_app (i, args), _)] ->
+      if id_to_str i = "bitvector_concat" then (
+        let operands =
+          flatten_bv_concat_args (List.nth args 0) (List.nth args 1)
+        in
+        let (E_aux (op, _)) = op in
+        match op with
+        | E_id i -> Some (operands, id_to_str i)
+        | E_lit (L_aux (L_bin _, _) as lit) | E_lit (L_aux (L_hex _, _) as lit)
+          ->
+            Some (operands, bitv_literal_to_str lit)
+        | _ -> None
+      )
+      else None
+  | _ -> None
+
+let destructure_exps_to_bitv_access_and_bit es =
+  match es with
+  | [E_aux (E_app (i, [a; b]), _); E_aux (E_lit l, _)]
+  | [E_aux (E_lit l, _); E_aux (E_app (i, [a; b]), _)]
+    when id_to_str i = "bitvector_access" -> (
+      match (a, b) with
+      | E_aux (E_id varname, _), E_aux (E_lit (L_aux (L_num n, _)), _)
+      | E_aux (E_lit (L_aux (L_num n, _)), _), E_aux (E_id varname, _) -> (
+          let name = id_to_str varname in
+          match l with
+          | L_aux (L_one, _) -> Some (name, Nat_big_num.to_int n, true)
+          | L_aux (L_zero, _) -> Some (name, Nat_big_num.to_int n, false)
+          | _ -> None
+        )
+      | _ -> None
+    )
+  | _ -> None
+
+let rec create_guard (E_aux (e, (l, _))) =
+  match e with
+  | E_app (id, args) -> (
+      match id_to_str_noexn id with
+      (* | *)
+      | "or_bool" ->
+          Or (create_guard (List.nth args 0), create_guard (List.nth args 1))
+      (* & *)
+      | "and_bool" ->
+          And (create_guard (List.nth args 0), create_guard (List.nth args 1))
+      (* <= *)
+      | "lteq_int" -> (
+          match destructure_exps_to_int_operands args with
+          | Some (op1, op2) -> Less_eq_or_eq (op1, op2)
+          | None ->
+              failwith
+                ("Unsupported <= (less-than-or-equals) call @ "
+                ^ stringify_sail_source_loc l
+                )
+        )
+      (* == *)
+      | "eq_int" -> (
+          match destructure_exps_to_int_operands args with
+          | Some (op1, op2) -> Eq_int (op1, op2)
+          | None ->
+              failwith
+                ("Unsupported == (is-equals) with int arguments call @ "
+                ^ stringify_sail_source_loc l
+                )
+        )
+      (* < *)
+      | "lt_int" -> (
+          match destructure_exps_to_int_operands args with
+          | Some (op1, op2) -> Less_eq_int (op1, op2)
+          | _ ->
+              failwith
+                ("unsupported < (less-than) call @ "
+                ^ stringify_sail_source_loc l
+                )
+        )
+      (* >= *)
+      | "gteq_int" -> (
+          match destructure_exps_to_int_operands args with
+          | Some (op1, op2) -> Not (Less_eq_int (op1, op2))
+          | _ ->
+              failwith
+                ("unsupported < (less-than) call @ "
+                ^ stringify_sail_source_loc l
+                )
+        )
+      (* != *)
+      | "neq_bits" -> (
+          match destructure_exps_to_bitv_operands args with
+          | Some (ops, op2) -> Not (Eq_bv (ops, op2))
+          | None ->
+              failwith
+                ("Unsupported != (is-not-equals) with bitvec arguments call @ "
+                ^ stringify_sail_source_loc l
+                )
+        )
+      (* == *)
+      | "eq_bit" -> (
+          match destructure_exps_to_bitv_access_and_bit args with
+          | Some (name, idx, b) -> Eq_bit (name, idx, b)
+          | None ->
+              failwith
+                ("Unsupported == (is-equals) with bit arguments call @ "
+                ^ stringify_sail_source_loc l
+                )
+              (* == *)
+        )
+      | "eq_bits" -> (
+          match destructure_exps_to_bitv_operands args with
+          | Some (ops, op2) -> Eq_bv (ops, op2)
+          | None ->
+              failwith
+                ("Unsupported == (is-equals) with bitvec arguments call @ "
+                ^ stringify_sail_source_loc l
+                )
+        )
+      (* less than for bitvecs *)
+      | "<_u" -> (
+          match destructure_exps_to_bitv_operands args with
+          | Some ([op1], op2) -> Less_eq_bv (op1, op2)
+          | _ ->
+              failwith
+                ("Unsupported <_u (is-less-than-or-equals-unsigned) with \
+                  bitvec arguments call @ "
+                ^ stringify_sail_source_loc l
+                )
+        )
+      | name -> (
+          try
+            print_endline ("\n@@@@@@@@@@@@@@@@ FUNC " ^ name ^ " @@@@@@@@@@@\n");
+            let args =
+              List.map
+                (fun (E_aux (a, _)) ->
+                  match a with
+                  | E_id i -> [id_to_str i]
+                  | E_lit (L_aux (L_unit, _)) -> raise (Invalid_argument "unit")
+                  | E_lit (L_aux (L_true, _)) | E_lit (L_aux (L_one, _)) ->
+                      ["1"]
+                  | E_lit (L_aux (L_false, _)) | E_lit (L_aux (L_zero, _)) ->
+                      ["0"]
+                  | E_lit (L_aux (L_num n, _)) -> [Nat_big_num.to_string n]
+                  | E_lit (L_aux (L_bin _, _) as l)
+                  | E_lit (L_aux (L_hex _, _) as l) ->
+                      [bitv_literal_to_str l]
+                  | E_vector elems ->
+                      List.map
+                        (fun e ->
+                          match e with
+                          | E_aux (E_id i, _) -> id_to_str i
+                          | _ ->
+                              failwith
+                                "Unsupported argument in boolean call: List \
+                                 too complex"
+                        )
+                        elems
+                  | _ ->
+                      failwith
+                        ("Unsupported boolean call '" ^ name ^ "' @ "
+                        ^ stringify_sail_source_loc l
+                        )
+                )
+                args
+            in
+
+            Boolfun (name, List.flatten args)
+          with Invalid_argument _ -> Boolfun (name, [])
+        )
+    )
+  | E_typ (t, e) -> create_guard e
+  | _ ->
+      failwith
+        ("Unsupported boolean expression @ " ^ stringify_sail_source_loc l)
+
+let create_conditions state r arg_bindings =
+  let (MPat_aux (right, (l, _))) = r in
+  match right with
+  | MPat_pat p -> (create_conditions_from_pat state p arg_bindings, True)
+  | MPat_when (p, e) ->
+      let conds = create_conditions_from_pat state p arg_bindings in
+      print_endline
+        ("HELLO:::: FOUND PREDICATES @ " ^ stringify_sail_source_loc l);
+      let (E_aux (exp, (l, _))) = e in
+      ( match exp with
+      | E_app (id, args) ->
+          print_endline
+            ("\nAPPLICATION gAURD ----------------------------- " ^ id_to_str id
+           ^ ", num ARGS IS "
+            ^ string_of_int (List.length args)
+            ^ "(@"
+            ^ stringify_sail_source_loc l
+            ^ ")"
+            )
+      | _ -> print_endline "OTHER GAURD"
+      );
+      (conds, create_guard e)
 
 let calculate_instr_length typ =
   let errmsg = "Cant calculate instruction length from ast decode mapping" in
@@ -208,8 +451,12 @@ let calculate_instr_len state _ id _ typ =
 let gen_decode_rule decode_mappig_name state _ id _ left right =
   if id_to_str id = decode_mappig_name then (
     let bindings, consequences = bind_args_and_create_consequences state left in
-    let conditions = create_conditions state right bindings in
-    state.decode_rules <- (conditions, consequences) :: state.decode_rules
+    let conditions, guards = create_conditions state right bindings in
+    print_endline
+      "\n\n\
+       &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&DONE&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n\n";
+    state.decode_rules <-
+      (conditions, guards, consequences) :: state.decode_rules
   )
 
 let gen_decoder decode_mappig_name ast analysis =
@@ -224,115 +471,3 @@ let gen_decoder decode_mappig_name ast analysis =
   foreach_node ast decoder_gen_processor state;
   state.decode_rules <- List.rev state.decode_rules;
   state.decode_rules
-
-(***********************************************************************************************)
-(************************** Decoder transformation to imperative logic *************************)
-(***********************************************************************************************)
-
-let gen_assert_boolean_exprs offsets (i, rule_cond) =
-  match rule_cond with
-  | Assert (_, bval) ->
-      let starting = List.nth offsets i in
-      let ending = List.nth offsets (i + 1) in
-      Some (Is_eq (Binstr_slice (starting, ending), bval))
-  | _ -> None
-
-let gen_bind_stmts offsets (i, rule_cond) =
-  match rule_cond with
-  | Bind (_, var) ->
-      Some
-        (Init (var, Binstr_slice (List.nth offsets i, List.nth offsets (i + 1))))
-  | _ -> None
-
-let calculate_offsets conds =
-  let rev_offsets =
-    List.fold_left
-      (fun roffs cond ->
-        match cond with
-        | Assert (len, _)
-        | Bind (len, _)
-        | Map_bind (len, _, _)
-        | Struct_map_bind (len, _, _, _) -> (
-            match roffs with
-            | curr :: _ -> (len + curr) :: roffs
-            | [] -> failwith "UNREACHABLE"
-          )
-      )
-      [0] conds
-  in
-  List.rev rev_offsets
-
-let gen_mapbind_stmt offsets (i, cond) body =
-  let slice = Binstr_slice (List.nth offsets i, List.nth offsets (i + 1)) in
-  match cond with
-  | Map_bind (_, map_tbl, var_name) ->
-      let values =
-        Hashtbl.fold
-          (fun bv_val enum_val vs -> (bv_val, enum_val) :: vs)
-          map_tbl []
-      in
-      let switch = Switch_assign (var_name, slice, values) in
-      Block [switch; If (Is_enum_var_valid var_name, body)]
-  | Struct_map_bind (_, struct_name, map_tbl, var_name) ->
-      let values =
-        Hashtbl.fold
-          (fun bv_val kvs accumulator -> (bv_val, kvs) :: accumulator)
-          map_tbl []
-      in
-      let switch =
-        Switch_assign_struct (struct_name, var_name, slice, values)
-      in
-      Block [switch; If (Is_struct_var_valid var_name, body)]
-  | _ -> body
-
-let gen_stmt_from_conditions rule_name conds conseq_stmts =
-  let offsets = calculate_offsets conds in
-  let indices = List.mapi (fun i _ -> i) conds in
-  let conds_indexed = List.combine indices conds in
-  let assert_exprs =
-    List.filter_map (gen_assert_boolean_exprs offsets) conds_indexed
-  in
-  let bind_stmts = List.filter_map (gen_bind_stmts offsets) conds_indexed in
-  let mapbind_stmt =
-    List.fold_right (gen_mapbind_stmt offsets) conds_indexed
-      (Block (List.append bind_stmts conseq_stmts))
-  in
-  match assert_exprs with
-  | [] -> Block [Start_rule rule_name; mapbind_stmt; End_rule]
-  | _ ->
-      Block
-        [Start_rule rule_name; If (And assert_exprs, mapbind_stmt); End_rule]
-
-let gen_stmt_from_consequences consequences =
-  let head, bodies = consequences in
-  let (Assign_node_type case_name) = head in
-  let body_stmts =
-    List.map
-      (fun body ->
-        match body with
-        | Push v -> Set_ast_next_case_member (Val v)
-        | Concat_push vs ->
-            let literals =
-              List.map
-                (fun v ->
-                  match v with
-                  | Bv_const bvc -> Literal bvc
-                  | Binding name -> Id name
-                  | _ ->
-                      failwith
-                        "Type Error: concat undefined for non-bitvec values"
-                )
-                vs
-            in
-            Set_ast_next_case_member (Exp (Concat literals))
-      )
-      bodies
-  in
-  (List.append (Set_ast_case case_name :: body_stmts) [Ret_ast], case_name)
-
-let gen_stmt_from_rule rule =
-  let conditions, consequences = rule in
-  let conseq_stmts, name = gen_stmt_from_consequences consequences in
-  gen_stmt_from_conditions name conditions conseq_stmts
-
-let gen_decode_proc decoder = Proc (Block (List.map gen_stmt_from_rule decoder))

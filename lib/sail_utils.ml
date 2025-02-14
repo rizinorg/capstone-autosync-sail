@@ -16,30 +16,28 @@ let stringify_lex_pos start ending =
     ^ ", column: "
     ^ string_of_int ending.pos_cnum
     ^ "]"
-  else "multi-file element"
+  else "<multi-file element>"
 
 let stringify_sail_source_loc loc =
   let open Parse_ast in
   match loc with
   | Range (start, ending) -> stringify_lex_pos start ending
+  | Unknown -> "<unknown location>"
   | _ -> "<unprintable>"
 
 let id_to_str id =
   let (Id_aux (i, loc)) = id in
   match i with
   | Id s -> s
-  | Operator _ ->
+  | Operator o ->
       failwith
         ("Operator identifiers are not supported @ "
         ^ stringify_sail_source_loc loc
+        ^ "(Operator: " ^ o ^ ")"
         )
-
 let id_to_str_noexn id =
   let (Id_aux (i, loc)) = id in
-  match i with
-  | Id s -> s
-  | Operator o ->
-      "<Infix Operator " ^ o ^ " @ " ^ stringify_sail_source_loc loc ^ ">"
+  match i with Id s -> s | Operator o -> o
 
 let convert_bitv_size_to_int ?(throw_on_unsupported_size_exprs = true) size =
   let (A_aux (a, _)) = size in

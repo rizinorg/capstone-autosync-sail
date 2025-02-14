@@ -22,7 +22,11 @@ let add_instr_types conf case_names_to_instr_types analysis case_name
   | [] -> do_add case_name (-1, [case_name])
   | [(i, enum_typename)] ->
       do_add case_name (i, get_all_members_of_enum analysis enum_typename)
-  | _ -> failwith "FAIL"
+  | _ ->
+      failwith
+        ("Ambiguous instruction type enum: can't determine the type enum for \
+          ast case " ^ case_name
+        )
 
 let gen_instr_types analysis conf =
   let case_names_to_enum_typenames = get_all_cases_with_enum_members analysis in

@@ -5,8 +5,10 @@
 ../sail-riscv/model/riscv_flen_D.sail
 ../sail-riscv/model/riscv_flen.sail
 ../sail-riscv/model/riscv_vlen.sail
+../sail-riscv/model/prelude_mem_addrtype.sail
 ../sail-riscv/model/prelude_mem_metadata.sail
 ../sail-riscv/model/prelude_mem.sail
+../sail-riscv/model/riscv_extensions.sail
 ../sail-riscv/model/riscv_types_common.sail
 ../sail-riscv/model/riscv_types_ext.sail
 ../sail-riscv/model/riscv_types.sail
@@ -36,6 +38,7 @@
 ../sail-riscv/model/riscv_fdext_control.sail
 ../sail-riscv/model/riscv_sys_control.sail
 ../sail-riscv/model/riscv_platform.sail
+../sail-riscv/model/riscv_sstc.sail
 ../sail-riscv/model/riscv_mem.sail
 ../sail-riscv/model/riscv_vmem_common.sail
 ../sail-riscv/model/riscv_vmem_pte.sail

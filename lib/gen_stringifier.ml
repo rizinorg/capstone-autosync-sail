@@ -57,14 +57,14 @@ let case_args_to_intrinsic_logic_args arg_names_to_indices args =
                      match typ with
                      | Typ_aux (Typ_app (id, args), _) ->
                          sail_bitv_size_to_int (List.nth args 0)
-                     | _ -> failwith ""
+                     | _ -> failwith "Unsupported pattern"
                    in
                    Arg_idx (arg_idx, arg_size)
-               | _ -> failwith ""
+               | _ -> failwith "Unsupported pattern"
              )
              pats
           )
-    | _ -> failwith "200"
+    | _ -> failwith "Unsupported pattern"
   in
   match args with
   | [MP_aux (MP_lit (L_aux (L_unit, _)), _)] -> []
@@ -98,7 +98,7 @@ let get_case analysis pat =
             get_sole_element_or_none specializations,
             arg_names_to_arg_indices
           )
-      | _ -> failwith "1"
+      | _ -> failwith "UNREACHABLE"
     )
 
 let create_bv2str name tbl arg_names_to_indices args =
@@ -107,7 +107,10 @@ let create_bv2str name tbl arg_names_to_indices args =
       let arg_name = id_to_str (Option.get (case_arg_to_id arg)) in
       let arg_idx = Hashtbl.find arg_names_to_indices arg_name in
       Bitv2Str (name, arg_idx, tbl)
-  | _ -> failwith ""
+  | _ ->
+      failwith
+        "Unsupported bv -> str function: only 1-argument functions are \
+         supported"
 
 let create_enum2str analysis name tbl arg_names_to_indices args =
   match args with
@@ -122,7 +125,10 @@ let create_enum2str analysis name tbl arg_names_to_indices args =
         let arg_idx = Hashtbl.find arg_names_to_indices arg_name in
         Enum2Str (name, arg_idx, tbl)
       )
-  | _ -> failwith ""
+  | _ ->
+      failwith
+        "Unsupported enum -> str function: only 1-argument functions are \
+         supported"
 
 let create_bool2str name tbl arg_names_to_indices args =
   match args with
@@ -139,7 +145,10 @@ let create_bool2str name tbl arg_names_to_indices args =
           in
           Bool2Str (name, arg_idx, tbl)
     )
-  | _ -> failwith ""
+  | _ ->
+      failwith
+        "Unsupported bool -> str function: only 1-argument functions are \
+         supported"
 
 let create_struct2str name tbl arg_names_to_indices args =
   match args with
@@ -147,7 +156,10 @@ let create_struct2str name tbl arg_names_to_indices args =
       let arg_name = id_to_str (Option.get (case_arg_to_id arg)) in
       let arg_idx = Hashtbl.find arg_names_to_indices arg_name in
       Struct2str (name, arg_idx, tbl)
-  | _ -> failwith ""
+  | _ ->
+      failwith
+        "Unsupported struct -> str function: only 1-argument functions are \
+         supported"
 
 let create_to_str_from_pattern analysis arg_names_to_indices pat =
   let (MP_aux (p, _)) = pat in
@@ -184,7 +196,7 @@ let create_to_str_from_pattern analysis arg_names_to_indices pat =
           )
         )
       )
-  | _ -> failwith ""
+  | _ -> failwith "Unsupported pattern in a stringifier clause"
 
 let create_to_strs analysis arg_names_to_indices right =
   let (MPat_aux (pat, _)) = right in
@@ -197,7 +209,7 @@ let create_to_strs analysis arg_names_to_indices right =
           List.map
             (create_to_str_from_pattern analysis arg_names_to_indices)
             pats
-      | _ -> failwith "+__+"
+      | _ -> failwith "Unsupported pattern in stringifier clause"
     )
 
 let gen_stringifier_rule state _ id _ left right =
@@ -235,7 +247,10 @@ let gen_stringifier_rule state _ id _ left right =
 let gen_stringifier ast analysis =
   let state = { analysis; stringifier = Hashtbl.create 500; case_names = [] } in
   let stringifier_gen_processor =
-    { default_processor with process_mapping_bidir_clause = gen_stringifier_rule }
+    {
+      default_processor with
+      process_mapping_bidir_clause = gen_stringifier_rule;
+    }
   in
   foreach_node ast stringifier_gen_processor state;
 

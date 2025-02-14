@@ -31,7 +31,7 @@ let get_generator_comment () =
         ^ ".";
         " DO NOT MODIFY THIS CODE MANUALLY. ANY MANUAL EDITS ARE OVERWRITTEN.";
         " ------------------------------------------------------------------- ";
-        " Copyright © 2024 moste00 <ubermenchun@gmail.com>";
+        " Copyright © 2024-2025 moste00 <ubermenchun@gmail.com>";
         " SPDX-License-Identifier: BSD-3-Clause";
         delimiter;
       ]
@@ -108,16 +108,14 @@ let ctypedefs_str = stringify_typdef ctypedefs
 
 let analysis = Sail_analysis.analyze ast types
 
-let dec = gen_decode_proc (gen_decoder ast_decode_mapping ast analysis)
+let dec = gen_decoder ast_decode_mapping ast analysis
 
-let compressed_dec =
-  gen_decode_proc (gen_decoder ast_compressed_decode_mapping ast analysis)
+let compressed_dec = gen_decoder ast_compressed_decode_mapping ast analysis
 
-let dec_str = stringify_decode_procedure dec typdefwalker
+let dec_str = decoder_to_c dec typdefwalker
 
 let compressed_dec_str =
-  stringify_decode_procedure ~c_proc_name:"decode_compressed" compressed_dec
-    typdefwalker
+  decoder_to_c ~c_proc_name:"decode_compressed" compressed_dec typdefwalker
 
 let asm = gen_stringifier ast analysis
 
@@ -136,17 +134,17 @@ let _ = Gen_operand_info.gen_operand_info ast analysis
 let () = write_c_file ast_type_filename ctypedefs_str
 let () =
   write_c_file decode_logic_filename dec_str
-    ~additional_includes:[ast_type_filename]
+    ~additional_includes:[ast_type_filename; "RISCVDecodeHelpers.h"]
 let () =
   write_c_file compressed_decode_logic_filename compressed_dec_str
-    ~additional_includes:[ast_type_filename]
+    ~additional_includes:[ast_type_filename; "RISCVDecodeHelpers.h"]
 let () =
   write_c_file assembler_filename asm_str
     ~additional_includes:
       [
         ast_type_filename;
         ast2str_tables_filename;
-        "RISCVHelpersAst2Str.h";
+        "RISCVAst2StrHelpers.h";
         "SStream.h";
       ]
 

@@ -230,7 +230,9 @@ let mk_bv2str clauses =
   let add_bv2str_entry bv2str_table (s, bv) =
     match bv with
     | MP_lit bitv -> Hashtbl.add bv2str_table (bitv_literal_to_str bitv) s
-    | _ -> failwith "----"
+    | _ ->
+        failwith
+          "Unsupported entry in bv -> str mapping: only literals are supported"
   in
   let bv2str = Hashtbl.create (List.length clauses) in
   let entries = destructure_string_mapping clauses in
@@ -241,7 +243,10 @@ let mk_enum2str clauses =
   let add_enum2str_entry enum2str_table (s, enm) =
     match enm with
     | MP_id enum_const -> Hashtbl.add enum2str_table (id_to_str enum_const) s
-    | _ -> failwith "------"
+    | _ ->
+        failwith
+          "Unsupported entry in enum -> str mapping: only literals are \
+           supported"
   in
   let enum2str = Hashtbl.create (List.length clauses) in
   let entries = destructure_string_mapping clauses in
@@ -255,7 +260,9 @@ let mk_bool2str clauses =
       (fstr, tstr)
   | [(fstr, MP_lit (L_aux (L_false, _))); (tstr, MP_lit (L_aux (L_true, _)))] ->
       (fstr, tstr)
-  | _ -> failwith "+++++++++ "
+  | _ ->
+      failwith
+        "Unsupported entry in bool -> str mapping: only literals are supported"
 
 let mk_struct2str clauses =
   let add_struct2str_entry struct2str_table (s, struct_lit) =
@@ -264,7 +271,10 @@ let mk_struct2str clauses =
         Hashtbl.add struct2str_table
           (List.map struct_member_to_kv_pair struct_members)
           s
-    | _ -> failwith "***********************"
+    | _ ->
+        failwith
+          "Unsupported entry in struct -> str mapping: only struct literals \
+           are supported"
   in
   let struct2str = Hashtbl.create (List.length clauses) in
   let entries = destructure_string_mapping clauses in

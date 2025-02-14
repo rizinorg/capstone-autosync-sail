@@ -85,9 +85,24 @@ type condition =
 type conditions = condition list
 
 type consequence_head = Assign_node_type of string
-type consequence_body = Push of value | Concat_push of value list
-type consequences = consequence_head * consequence_body list
+type consequence_item = Push of value | Concat_push of value list
+type consequences = consequence_head * consequence_item list
 
-type decode_rule = conditions * consequences
+type int_operand = Id_or_funcall of string * string list | Number of int
+type bv_operand = Bv_concat of string list | Bv_id of string
+type guard =
+  | Eq_int of int_operand * int_operand
+  | Less_eq_int of int_operand * int_operand
+  | Less_eq_or_eq of int_operand * int_operand
+  | Eq_bit of string * int * bool
+  | Eq_bv of string list * string
+  | Less_eq_bv of string * string
+  | Boolfun of string * string list
+  | And of guard * guard
+  | Or of guard * guard
+  | Not of guard
+  | True
+
+type decode_rule = conditions * guard * consequences
 
 type decoder = decode_rule list

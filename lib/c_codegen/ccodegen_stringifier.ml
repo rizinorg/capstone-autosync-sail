@@ -161,8 +161,8 @@ let assembler_clause_to_c ({ walker; _ } as str_state) (case_name, subcases) =
 let assembler_to_c asm walker =
   let procedure_start =
     "static void ast2str(struct " ^ ast_sail_def_name ^ " *" ^ ast_c_parameter
-    ^ ", SStream *ss, riscv_conf *conf) { " ^ "switch (" ^ ast_c_parameter
-    ^ "->" ^ ast_sail_def_name ^ generated_ast_enum_suffix ^ ") {"
+    ^ ", SStream *ss, RVContext *conf) { " ^ "switch (" ^ ast_c_parameter ^ "->"
+    ^ ast_sail_def_name ^ generated_ast_enum_suffix ^ ") {"
   in
   let procedure_end = "}}" in
   let initial_state = { walker; already_defined_tables = Hashtbl.create 100 } in
