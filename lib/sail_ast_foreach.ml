@@ -111,7 +111,6 @@ let rec foreach_expr e processor state =
       processor.process_tuple state children;
       List.iter (fun c -> foreach_expr c processor state) children
   | E_if (child1, child2, child3) ->
-      print_endline "\n((((((((((((((((((FOUND IF ELSE)))))))))))))))))))))))))";
       processor.process_if state child1 child2 child3;
       foreach_expr child1 processor state;
       foreach_expr child2 processor state;

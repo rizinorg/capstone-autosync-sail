@@ -59,7 +59,6 @@ let bind_args_and_create_consequences state l =
       match pat with
       | MP_app (union_case_id, union_case_args) ->
           let case_name = id_to_str union_case_id in
-          print_endline ("\n+++++++++++++++++++++++++" ^ case_name);
           let bodies =
             match union_case_args with
             | [MP_aux (MP_lit (L_aux (L_unit, _)), _)] -> []
@@ -359,7 +358,6 @@ let rec create_guard (E_aux (e, (l, _))) =
         )
       | name -> (
           try
-            print_endline ("\n@@@@@@@@@@@@@@@@ FUNC " ^ name ^ " @@@@@@@@@@@\n");
             let args =
               List.map
                 (fun (E_aux (a, _)) ->
@@ -409,21 +407,6 @@ let create_conditions state r arg_bindings =
   | MPat_pat p -> (create_conditions_from_pat state p arg_bindings, True)
   | MPat_when (p, e) ->
       let conds = create_conditions_from_pat state p arg_bindings in
-      print_endline
-        ("HELLO:::: FOUND PREDICATES @ " ^ stringify_sail_source_loc l);
-      let (E_aux (exp, (l, _))) = e in
-      ( match exp with
-      | E_app (id, args) ->
-          print_endline
-            ("\nAPPLICATION gAURD ----------------------------- " ^ id_to_str id
-           ^ ", num ARGS IS "
-            ^ string_of_int (List.length args)
-            ^ "(@"
-            ^ stringify_sail_source_loc l
-            ^ ")"
-            )
-      | _ -> print_endline "OTHER GAURD"
-      );
       (conds, create_guard e)
 
 let calculate_instr_length typ =
@@ -452,9 +435,6 @@ let gen_decode_rule decode_mappig_name state _ id _ left right =
   if id_to_str id = decode_mappig_name then (
     let bindings, consequences = bind_args_and_create_consequences state left in
     let conditions, guards = create_conditions state right bindings in
-    print_endline
-      "\n\n\
-       &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&DONE&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n\n";
     state.decode_rules <-
       (conditions, guards, consequences) :: state.decode_rules
   )

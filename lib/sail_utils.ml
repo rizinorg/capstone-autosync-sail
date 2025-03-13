@@ -188,6 +188,7 @@ let destructure_union_arglist args =
               )
               args
           )
+      | P_aux (P_id i, (l, _)) -> (id_to_str id, [id_to_str i])
       | _ -> (id_to_str id, [])
     )
   | _ ->

@@ -7,3 +7,10 @@ let set_contains set thing =
     Hashtbl.find set thing;
     true
   with Not_found -> false
+
+let set_length set = Hashtbl.length set
+
+let set_of_list list =
+  let set = Hashtbl.create (List.length list) in
+  List.iter (fun e -> set_add set e) list;
+  set
