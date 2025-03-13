@@ -155,7 +155,7 @@ let rec infer_register_files ?(rootcall = false) regidx_fun_registery
     (fun operand _ ->
       if
         (not (Hashtbl.mem operand_types operand))
-        && flag
+        && rootcall
         && not (Hashtbl.mem aliases_to_operands operand)
       then
         (* Should fail, eventually *)
