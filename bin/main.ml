@@ -42,9 +42,9 @@ let mkdir_if_none_exists dirname =
   try Sys.mkdir dirname 0o777 with Sys_error _ -> ()
 
 let write_c_file ?(additional_includes = []) name code =
-  mkdir_if_none_exists "riscv_disasm";
+  mkdir_if_none_exists "generated_output";
 
-  let oc = open_out ("riscv_disasm/" ^ name) in
+  let oc = open_out ("generated_output/" ^ name) in
   let mk_include_lines incs =
     String.concat "\n"
       (List.map
