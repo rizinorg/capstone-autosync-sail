@@ -8,7 +8,7 @@ eval $(opam env)
 SAIL_RISCV_GIT_TAG="$1"
 
 git -C sail-riscv checkout "$SAIL_RISCV_GIT_TAG"
-SAIL_RISCV_GIT_HASH=$(git -C sail-riscv/ rev-list -n 1 0.7)
+SAIL_RISCV_GIT_HASH=$(git -C sail-riscv/ rev-parse --short 0.7)
 
 dune build --profile release
 ./_build/default/bin/main.exe -f "conf/sail-riscv-$SAIL_RISCV_GIT_TAG.txt" -o "generated_output" -c "$SAIL_RISCV_GIT_HASH"
