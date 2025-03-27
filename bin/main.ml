@@ -39,12 +39,12 @@ let get_generator_comment () =
   ^ "*/\n\n"
 
 let mkdir_if_none_exists dirname =
-  try Sys.mkdir dirname 0o777 with Sys_error _ -> ()
+  try Sys.mkdir dirname 0o755 with Sys_error _ -> ()
 
-let write_c_file ?(additional_includes = []) name code =
-  mkdir_if_none_exists "generated_output";
+let write_c_file ?(additional_includes = []) out_directory name code =
+  mkdir_if_none_exists out_directory;
 
-  let oc = open_out ("generated_output/" ^ name) in
+  let oc = open_out (out_directory ^ "/" ^ name) in
   let mk_include_lines incs =
     String.concat "\n"
       (List.map
@@ -72,7 +72,8 @@ let write_c_file ?(additional_includes = []) name code =
 
 let sailpath = Unix.getenv "HOME" ^ "/.opam/default/share/sail/"
 
-let paths_filename = ref ""
+let paths_filename = ref "conf/sail-riscv-0.x.txt"
+let out_directory = ref "generated_output"
 
 let usage_msg = "Usage: riscv_disasm_from_sail -f <path-to-list-of-input-files>"
 let arg_spec =
@@ -80,6 +81,10 @@ let arg_spec =
     ( "-f",
       Arg.Set_string paths_filename,
       "Path to a file containing a list of input files, a filename on each line"
+    );
+    ( "-o",
+      Arg.Set_string out_directory,
+      "Path to a directory where to generate the output"
     );
   ]
 let anon_arg_handler a =
@@ -134,15 +139,16 @@ let instr_types_str, instr_types_mapping_str =
 let info = Gen_operand_info.gen_operand_info ast analysis
 let info_str = operand_info_to_c info typdefwalker *)
 
-let () = write_c_file ast_type_filename ctypedefs_str
+let () = 
+  write_c_file !out_directory ast_type_filename ctypedefs_str
 let () =
-  write_c_file decode_logic_filename dec_str
+  write_c_file !out_directory decode_logic_filename dec_str
     ~additional_includes:[ast_type_filename; "RISCVDecodeHelpers.h"]
 let () =
-  write_c_file compressed_decode_logic_filename compressed_dec_str
+  write_c_file !out_directory compressed_decode_logic_filename compressed_dec_str
     ~additional_includes:[ast_type_filename; "RISCVDecodeHelpers.h"]
 let () =
-  write_c_file assembler_filename asm_str
+  write_c_file !out_directory assembler_filename asm_str
     ~additional_includes:
       [
         ast_type_filename;
@@ -152,16 +158,16 @@ let () =
       ]
 
 let () =
-  write_c_file ast2str_tables_filename tables_str
+  write_c_file !out_directory ast2str_tables_filename tables_str
     ~additional_includes:[ast_type_filename; "../../SStream.h"]
 
-let () = write_c_file instr_types_filename instr_types_str
+let () = write_c_file !out_directory instr_types_filename instr_types_str
 
 let () =
-  write_c_file instr_types_mapping_filename instr_types_mapping_str
+  write_c_file !out_directory instr_types_mapping_filename instr_types_mapping_str
     ~additional_includes:[instr_types_filename]
 
 (* let () =
-  write_c_file operands_filename info_str
+  write_c_file !out_directory operands_filename info_str
     ~additional_includes:
       [ast_type_filename; "../../include/capstone/capstone.h"] *)
