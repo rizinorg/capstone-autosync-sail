@@ -120,14 +120,11 @@ let tostr_logic_to_c ({ walker; _ } as str_state) i tostr =
 
       (String.concat "" !cases ^ ";", "")
   | Intrinsic_tostr_logic (name, args) ->
-      (* spc() is space, sep() is separator, i.e. comma + space *)
-      if name = "spc" then
-        ("SStream_concat(ss, \" \");", "")
-      else if name = "sep" then
-        ("SStream_concat(ss, \", \");", "")
-      else if name = "opt_spc" then
-        ("", "")
-      else
+      match name with
+      | "spc" -> ("SStream_concat(ss, \" \");", "") (* spc() is space *)
+      | "sep" -> ("SStream_concat(ss, \", \");", "") (* sep() is separator, i.e. comma + space *)
+      | "opt_spc" -> ("", "") (* opt_spc() is optional space, which we do not define *)
+      | _ -> 
         let sep = if List.length args != 0 then "," else "" in
         let args = List.map (intrinsic_logic_arg_to_c walker) args in
         (name ^ "(" ^ String.concat ", " args ^ sep ^ "ss, conf);", "")
