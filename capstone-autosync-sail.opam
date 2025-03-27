@@ -23,7 +23,7 @@ bug-reports: "https://github.com/rizinorg/capstone-autosync-sail/issues"
 depends: [
   "ocaml"
   "dune" {>= "3.15"}
-  "libsail" {= "0.18"}
+  "libsail" {= "0.19"}
   "odoc" {with-doc}
 ]
 build: [

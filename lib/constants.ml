@@ -33,3 +33,5 @@ let ast2str_tables_filename = "RISCVAst2StrTbls.gen.inc"
 let instr_types_filename = "RISCVInsn.gen.inc"
 
 let instr_types_mapping_filename = "RISCVInsnMappings.gen.inc"
+
+let operands_filename = "RISCVOperands.gen.inc"

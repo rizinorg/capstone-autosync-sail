@@ -130,9 +130,19 @@ and gen_clike_type_from_id name typgen_info id =
           )
       | TD_record (record_id, _, members, _) ->
           gen_clike_type_from_record name typgen_info record_id members
+      | TD_variant (_, _, members, _) -> (
+          match members with
+          | [Tu_aux (Tu_ty_id (typ, _), _)] ->
+              gen_clike_type name typgen_info typ
+          | _ ->
+              failwith
+                ("Variant " ^ typ_name
+               ^ " is too complex to be translated into C"
+                )
+        )
       | _ ->
           invalid_arg
-            ("Type " ^ name ^ " cant be translated into a C equivalent")
+            ("Type " ^ typ_name ^ " cant be translated into a C equivalent")
     )
 
 and gen_clike_type_from_abbrev name typgen_info typarg =

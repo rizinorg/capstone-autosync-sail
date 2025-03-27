@@ -3,7 +3,7 @@
 /* (see https://github.com/rizinorg/capstone-autosync-sail)*/
 /* from the sail model of RISC-V*/
 /* (see https://github.com/riscv/sail-riscv) @ version
- * 8a75b297b116a1ffd8c62e98a7f43e2d93761d15.*/
+ * 9fe13b6cfff3e3894057e444868743b3df1b9076.*/
 /* DO NOT MODIFY THIS CODE MANUALLY. ANY MANUAL EDITS ARE OVERWRITTEN.*/
 /* ------------------------------------------------------------------- */
 /* Copyright © 2024-2025 moste00 <ubermenchun@gmail.com>*/
@@ -1129,8 +1129,9 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------CSR------------------------------//
-  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x73) {
+  //----------------------------CSRReg------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x73 &&
+      SLICE_BITVEC(binary_stream, 14, 14) == 0x0) {
     uint64_t op = 0xFFFFFFFFFFFFFFFF;
     switch (SLICE_BITVEC(binary_stream, 12, 13)) {
     case 0x1:
@@ -1144,27 +1145,44 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       break;
     }
     if (op != 0xFFFFFFFFFFFFFFFF) {
-      uint64_t is_imm = 0xFFFFFFFFFFFFFFFF;
-      switch (SLICE_BITVEC(binary_stream, 14, 14)) {
-      case 0x1:
-        is_imm = RISCV_true;
-        break;
-      case 0x0:
-        is_imm = RISCV_false;
-        break;
-      }
-      if (is_imm != 0xFFFFFFFFFFFFFFFF) {
-        uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
-        uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
-        uint64_t csr = SLICE_BITVEC(binary_stream, 20, 31);
-        tree->ast_node_type = RISCV_CSR;
-        tree->ast_node.csr.csr = csr;
-        tree->ast_node.csr.rs1 = rs1;
-        tree->ast_node.csr.rd = rd;
-        tree->ast_node.csr.is_imm = is_imm;
-        tree->ast_node.csr.op = op;
-        return;
-      }
+      uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
+      uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
+      uint64_t csr = SLICE_BITVEC(binary_stream, 20, 31);
+      tree->ast_node_type = RISCV_CSRReg;
+      tree->ast_node.csrreg.csr = csr;
+      tree->ast_node.csrreg.rs1 = rs1;
+      tree->ast_node.csrreg.rd = rd;
+      tree->ast_node.csrreg.op = op;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------CSRImm------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x73 &&
+      SLICE_BITVEC(binary_stream, 14, 14) == 0x1) {
+    uint64_t op = 0xFFFFFFFFFFFFFFFF;
+    switch (SLICE_BITVEC(binary_stream, 12, 13)) {
+    case 0x1:
+      op = RISCV_CSRRW;
+      break;
+    case 0x3:
+      op = RISCV_CSRRC;
+      break;
+    case 0x2:
+      op = RISCV_CSRRS;
+      break;
+    }
+    if (op != 0xFFFFFFFFFFFFFFFF) {
+      uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
+      uint64_t imm = SLICE_BITVEC(binary_stream, 15, 19);
+      uint64_t csr = SLICE_BITVEC(binary_stream, 20, 31);
+      tree->ast_node_type = RISCV_CSRImm;
+      tree->ast_node.csrimm.csr = csr;
+      tree->ast_node.csrimm.imm = imm;
+      tree->ast_node.csrimm.rd = rd;
+      tree->ast_node.csrimm.op = op;
+      return;
     }
   }
   //------------------------------------------------------------------------------------//
@@ -1178,7 +1196,7 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t pred = SLICE_BITVEC(binary_stream, 24, 27);
     uint64_t fm = SLICE_BITVEC(binary_stream, 28, 31);
     if (((!(fm == 0x0)) && (!(fm == 0x8))) ||
-        ((!(rs == 0x00)) || (!(rd == 0x00)))) {
+        ((neq_anything(rs, zreg, ctx)) || (neq_anything(rd, zreg, ctx)))) {
       tree->ast_node_type = RISCV_FENCE_RESERVED;
       tree->ast_node.fence_reserved.fm = fm;
       tree->ast_node.fence_reserved.pred = pred;
@@ -1196,7 +1214,8 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t rs = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t imm = SLICE_BITVEC(binary_stream, 20, 31);
-    if ((!(imm == 0x000)) || ((!(rs == ctx->zreg)) || (!(rd == ctx->zreg)))) {
+    if ((!(imm == 0x000)) ||
+        ((neq_anything(rs, zreg, ctx)) || (neq_anything(rd, zreg, ctx)))) {
       tree->ast_node_type = RISCV_FENCEI_RESERVED;
       tree->ast_node.fencei_reserved.imm = imm;
       tree->ast_node.fencei_reserved.rs = rs;
@@ -1647,7 +1666,7 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_S------------------------------//
+  //----------------------------F_UN_RM_FF_TYPE_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x2C) {
@@ -1676,18 +1695,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if (haveSingleFPU(ctx)) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_S;
-        tree->ast_node.f_un_rm_type_s.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_s.rm = rm;
-        tree->ast_node.f_un_rm_type_s.rd = rd;
-        tree->ast_node.f_un_rm_type_s.fcvt_s_lu = RISCV_FSQRT_S;
+        tree->ast_node_type = RISCV_F_UN_RM_FF_TYPE_S;
+        tree->ast_node.f_un_rm_ff_type_s.rs1 = rs1;
+        tree->ast_node.f_un_rm_ff_type_s.rm = rm;
+        tree->ast_node.f_un_rm_ff_type_s.rd = rd;
+        tree->ast_node.f_un_rm_ff_type_s.fsqrt_s = RISCV_FSQRT_S;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_S------------------------------//
+  //----------------------------F_UN_RM_FX_TYPE_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x60) {
@@ -1716,18 +1735,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if (haveSingleFPU(ctx)) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_S;
-        tree->ast_node.f_un_rm_type_s.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_s.rm = rm;
-        tree->ast_node.f_un_rm_type_s.rd = rd;
-        tree->ast_node.f_un_rm_type_s.fcvt_s_lu = RISCV_FCVT_W_S;
+        tree->ast_node_type = RISCV_F_UN_RM_FX_TYPE_S;
+        tree->ast_node.f_un_rm_fx_type_s.rs1 = rs1;
+        tree->ast_node.f_un_rm_fx_type_s.rm = rm;
+        tree->ast_node.f_un_rm_fx_type_s.rd = rd;
+        tree->ast_node.f_un_rm_fx_type_s.fcvt_lu_s = RISCV_FCVT_W_S;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_S------------------------------//
+  //----------------------------F_UN_RM_FX_TYPE_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x01 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x60) {
@@ -1756,18 +1775,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if (haveSingleFPU(ctx)) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_S;
-        tree->ast_node.f_un_rm_type_s.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_s.rm = rm;
-        tree->ast_node.f_un_rm_type_s.rd = rd;
-        tree->ast_node.f_un_rm_type_s.fcvt_s_lu = RISCV_FCVT_WU_S;
+        tree->ast_node_type = RISCV_F_UN_RM_FX_TYPE_S;
+        tree->ast_node.f_un_rm_fx_type_s.rs1 = rs1;
+        tree->ast_node.f_un_rm_fx_type_s.rm = rm;
+        tree->ast_node.f_un_rm_fx_type_s.rd = rd;
+        tree->ast_node.f_un_rm_fx_type_s.fcvt_lu_s = RISCV_FCVT_WU_S;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_S------------------------------//
+  //----------------------------F_UN_RM_XF_TYPE_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x68) {
@@ -1796,18 +1815,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if (haveSingleFPU(ctx)) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_S;
-        tree->ast_node.f_un_rm_type_s.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_s.rm = rm;
-        tree->ast_node.f_un_rm_type_s.rd = rd;
-        tree->ast_node.f_un_rm_type_s.fcvt_s_lu = RISCV_FCVT_S_W;
+        tree->ast_node_type = RISCV_F_UN_RM_XF_TYPE_S;
+        tree->ast_node.f_un_rm_xf_type_s.rs1 = rs1;
+        tree->ast_node.f_un_rm_xf_type_s.rm = rm;
+        tree->ast_node.f_un_rm_xf_type_s.rd = rd;
+        tree->ast_node.f_un_rm_xf_type_s.fcvt_s_lu = RISCV_FCVT_S_W;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_S------------------------------//
+  //----------------------------F_UN_RM_XF_TYPE_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x01 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x68) {
@@ -1836,18 +1855,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if (haveSingleFPU(ctx)) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_S;
-        tree->ast_node.f_un_rm_type_s.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_s.rm = rm;
-        tree->ast_node.f_un_rm_type_s.rd = rd;
-        tree->ast_node.f_un_rm_type_s.fcvt_s_lu = RISCV_FCVT_S_WU;
+        tree->ast_node_type = RISCV_F_UN_RM_XF_TYPE_S;
+        tree->ast_node.f_un_rm_xf_type_s.rs1 = rs1;
+        tree->ast_node.f_un_rm_xf_type_s.rm = rm;
+        tree->ast_node.f_un_rm_xf_type_s.rd = rd;
+        tree->ast_node.f_un_rm_xf_type_s.fcvt_s_lu = RISCV_FCVT_S_WU;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_S------------------------------//
+  //----------------------------F_UN_RM_FX_TYPE_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x02 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x60) {
@@ -1876,18 +1895,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveSingleFPU(ctx)) && (!(ctx->xlen < 64))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_S;
-        tree->ast_node.f_un_rm_type_s.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_s.rm = rm;
-        tree->ast_node.f_un_rm_type_s.rd = rd;
-        tree->ast_node.f_un_rm_type_s.fcvt_s_lu = RISCV_FCVT_L_S;
+        tree->ast_node_type = RISCV_F_UN_RM_FX_TYPE_S;
+        tree->ast_node.f_un_rm_fx_type_s.rs1 = rs1;
+        tree->ast_node.f_un_rm_fx_type_s.rm = rm;
+        tree->ast_node.f_un_rm_fx_type_s.rd = rd;
+        tree->ast_node.f_un_rm_fx_type_s.fcvt_lu_s = RISCV_FCVT_L_S;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_S------------------------------//
+  //----------------------------F_UN_RM_FX_TYPE_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x03 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x60) {
@@ -1916,18 +1935,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveSingleFPU(ctx)) && (!(ctx->xlen < 64))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_S;
-        tree->ast_node.f_un_rm_type_s.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_s.rm = rm;
-        tree->ast_node.f_un_rm_type_s.rd = rd;
-        tree->ast_node.f_un_rm_type_s.fcvt_s_lu = RISCV_FCVT_LU_S;
+        tree->ast_node_type = RISCV_F_UN_RM_FX_TYPE_S;
+        tree->ast_node.f_un_rm_fx_type_s.rs1 = rs1;
+        tree->ast_node.f_un_rm_fx_type_s.rm = rm;
+        tree->ast_node.f_un_rm_fx_type_s.rd = rd;
+        tree->ast_node.f_un_rm_fx_type_s.fcvt_lu_s = RISCV_FCVT_LU_S;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_S------------------------------//
+  //----------------------------F_UN_RM_XF_TYPE_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x02 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x68) {
@@ -1956,18 +1975,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveSingleFPU(ctx)) && (!(ctx->xlen < 64))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_S;
-        tree->ast_node.f_un_rm_type_s.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_s.rm = rm;
-        tree->ast_node.f_un_rm_type_s.rd = rd;
-        tree->ast_node.f_un_rm_type_s.fcvt_s_lu = RISCV_FCVT_S_L;
+        tree->ast_node_type = RISCV_F_UN_RM_XF_TYPE_S;
+        tree->ast_node.f_un_rm_xf_type_s.rs1 = rs1;
+        tree->ast_node.f_un_rm_xf_type_s.rm = rm;
+        tree->ast_node.f_un_rm_xf_type_s.rd = rd;
+        tree->ast_node.f_un_rm_xf_type_s.fcvt_s_lu = RISCV_FCVT_S_L;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_S------------------------------//
+  //----------------------------F_UN_RM_XF_TYPE_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x03 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x68) {
@@ -1996,18 +2015,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveSingleFPU(ctx)) && (!(ctx->xlen < 64))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_S;
-        tree->ast_node.f_un_rm_type_s.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_s.rm = rm;
-        tree->ast_node.f_un_rm_type_s.rd = rd;
-        tree->ast_node.f_un_rm_type_s.fcvt_s_lu = RISCV_FCVT_S_LU;
+        tree->ast_node_type = RISCV_F_UN_RM_XF_TYPE_S;
+        tree->ast_node.f_un_rm_xf_type_s.rs1 = rs1;
+        tree->ast_node.f_un_rm_xf_type_s.rm = rm;
+        tree->ast_node.f_un_rm_xf_type_s.rd = rd;
+        tree->ast_node.f_un_rm_xf_type_s.fcvt_s_lu = RISCV_FCVT_S_LU;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_S------------------------------//
+  //----------------------------F_BIN_TYPE_F_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x10) {
@@ -2015,17 +2034,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveSingleFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_S;
-      tree->ast_node.f_bin_type_s.rs2 = rs2;
-      tree->ast_node.f_bin_type_s.rs1 = rs1;
-      tree->ast_node.f_bin_type_s.rd = rd;
-      tree->ast_node.f_bin_type_s.fle_s = RISCV_FSGNJ_S;
+      tree->ast_node_type = RISCV_F_BIN_TYPE_F_S;
+      tree->ast_node.f_bin_type_f_s.rs2 = rs2;
+      tree->ast_node.f_bin_type_f_s.rs1 = rs1;
+      tree->ast_node.f_bin_type_f_s.rd = rd;
+      tree->ast_node.f_bin_type_f_s.fmax_s = RISCV_FSGNJ_S;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_S------------------------------//
+  //----------------------------F_BIN_TYPE_F_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x1 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x10) {
@@ -2033,17 +2052,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveSingleFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_S;
-      tree->ast_node.f_bin_type_s.rs2 = rs2;
-      tree->ast_node.f_bin_type_s.rs1 = rs1;
-      tree->ast_node.f_bin_type_s.rd = rd;
-      tree->ast_node.f_bin_type_s.fle_s = RISCV_FSGNJN_S;
+      tree->ast_node_type = RISCV_F_BIN_TYPE_F_S;
+      tree->ast_node.f_bin_type_f_s.rs2 = rs2;
+      tree->ast_node.f_bin_type_f_s.rs1 = rs1;
+      tree->ast_node.f_bin_type_f_s.rd = rd;
+      tree->ast_node.f_bin_type_f_s.fmax_s = RISCV_FSGNJN_S;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_S------------------------------//
+  //----------------------------F_BIN_TYPE_F_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x2 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x10) {
@@ -2051,17 +2070,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveSingleFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_S;
-      tree->ast_node.f_bin_type_s.rs2 = rs2;
-      tree->ast_node.f_bin_type_s.rs1 = rs1;
-      tree->ast_node.f_bin_type_s.rd = rd;
-      tree->ast_node.f_bin_type_s.fle_s = RISCV_FSGNJX_S;
+      tree->ast_node_type = RISCV_F_BIN_TYPE_F_S;
+      tree->ast_node.f_bin_type_f_s.rs2 = rs2;
+      tree->ast_node.f_bin_type_f_s.rs1 = rs1;
+      tree->ast_node.f_bin_type_f_s.rd = rd;
+      tree->ast_node.f_bin_type_f_s.fmax_s = RISCV_FSGNJX_S;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_S------------------------------//
+  //----------------------------F_BIN_TYPE_F_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x14) {
@@ -2069,17 +2088,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveSingleFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_S;
-      tree->ast_node.f_bin_type_s.rs2 = rs2;
-      tree->ast_node.f_bin_type_s.rs1 = rs1;
-      tree->ast_node.f_bin_type_s.rd = rd;
-      tree->ast_node.f_bin_type_s.fle_s = RISCV_FMIN_S;
+      tree->ast_node_type = RISCV_F_BIN_TYPE_F_S;
+      tree->ast_node.f_bin_type_f_s.rs2 = rs2;
+      tree->ast_node.f_bin_type_f_s.rs1 = rs1;
+      tree->ast_node.f_bin_type_f_s.rd = rd;
+      tree->ast_node.f_bin_type_f_s.fmax_s = RISCV_FMIN_S;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_S------------------------------//
+  //----------------------------F_BIN_TYPE_F_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x1 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x14) {
@@ -2087,17 +2106,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveSingleFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_S;
-      tree->ast_node.f_bin_type_s.rs2 = rs2;
-      tree->ast_node.f_bin_type_s.rs1 = rs1;
-      tree->ast_node.f_bin_type_s.rd = rd;
-      tree->ast_node.f_bin_type_s.fle_s = RISCV_FMAX_S;
+      tree->ast_node_type = RISCV_F_BIN_TYPE_F_S;
+      tree->ast_node.f_bin_type_f_s.rs2 = rs2;
+      tree->ast_node.f_bin_type_f_s.rs1 = rs1;
+      tree->ast_node.f_bin_type_f_s.rd = rd;
+      tree->ast_node.f_bin_type_f_s.fmax_s = RISCV_FMAX_S;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_S------------------------------//
+  //----------------------------F_BIN_TYPE_X_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x2 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x50) {
@@ -2105,17 +2124,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveSingleFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_S;
-      tree->ast_node.f_bin_type_s.rs2 = rs2;
-      tree->ast_node.f_bin_type_s.rs1 = rs1;
-      tree->ast_node.f_bin_type_s.rd = rd;
-      tree->ast_node.f_bin_type_s.fle_s = RISCV_FEQ_S;
+      tree->ast_node_type = RISCV_F_BIN_TYPE_X_S;
+      tree->ast_node.f_bin_type_x_s.rs2 = rs2;
+      tree->ast_node.f_bin_type_x_s.rs1 = rs1;
+      tree->ast_node.f_bin_type_x_s.rd = rd;
+      tree->ast_node.f_bin_type_x_s.fle_s = RISCV_FEQ_S;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_S------------------------------//
+  //----------------------------F_BIN_TYPE_X_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x1 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x50) {
@@ -2123,17 +2142,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveSingleFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_S;
-      tree->ast_node.f_bin_type_s.rs2 = rs2;
-      tree->ast_node.f_bin_type_s.rs1 = rs1;
-      tree->ast_node.f_bin_type_s.rd = rd;
-      tree->ast_node.f_bin_type_s.fle_s = RISCV_FLT_S;
+      tree->ast_node_type = RISCV_F_BIN_TYPE_X_S;
+      tree->ast_node.f_bin_type_x_s.rs2 = rs2;
+      tree->ast_node.f_bin_type_x_s.rs1 = rs1;
+      tree->ast_node.f_bin_type_x_s.rd = rd;
+      tree->ast_node.f_bin_type_x_s.fle_s = RISCV_FLT_S;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_S------------------------------//
+  //----------------------------F_BIN_TYPE_X_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x50) {
@@ -2141,17 +2160,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveSingleFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_S;
-      tree->ast_node.f_bin_type_s.rs2 = rs2;
-      tree->ast_node.f_bin_type_s.rs1 = rs1;
-      tree->ast_node.f_bin_type_s.rd = rd;
-      tree->ast_node.f_bin_type_s.fle_s = RISCV_FLE_S;
+      tree->ast_node_type = RISCV_F_BIN_TYPE_X_S;
+      tree->ast_node.f_bin_type_x_s.rs2 = rs2;
+      tree->ast_node.f_bin_type_x_s.rs1 = rs1;
+      tree->ast_node.f_bin_type_x_s.rd = rd;
+      tree->ast_node.f_bin_type_x_s.fle_s = RISCV_FLE_S;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_TYPE_S------------------------------//
+  //----------------------------F_UN_TYPE_X_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x1 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
@@ -2159,16 +2178,16 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     if (haveSingleFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_UN_TYPE_S;
-      tree->ast_node.f_un_type_s.rs1 = rs1;
-      tree->ast_node.f_un_type_s.rd = rd;
-      tree->ast_node.f_un_type_s.fmv_w_x = RISCV_FCLASS_S;
+      tree->ast_node_type = RISCV_F_UN_TYPE_X_S;
+      tree->ast_node.f_un_type_x_s.rs1 = rs1;
+      tree->ast_node.f_un_type_x_s.rd = rd;
+      tree->ast_node.f_un_type_x_s.fmv_x_w = RISCV_FCLASS_S;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_TYPE_S------------------------------//
+  //----------------------------F_UN_TYPE_X_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
@@ -2176,16 +2195,16 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     if (extensionEnabled(RISCV_Ext_F, ctx)) {
-      tree->ast_node_type = RISCV_F_UN_TYPE_S;
-      tree->ast_node.f_un_type_s.rs1 = rs1;
-      tree->ast_node.f_un_type_s.rd = rd;
-      tree->ast_node.f_un_type_s.fmv_w_x = RISCV_FMV_X_W;
+      tree->ast_node_type = RISCV_F_UN_TYPE_X_S;
+      tree->ast_node.f_un_type_x_s.rs1 = rs1;
+      tree->ast_node.f_un_type_x_s.rd = rd;
+      tree->ast_node.f_un_type_x_s.fmv_x_w = RISCV_FMV_X_W;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_TYPE_S------------------------------//
+  //----------------------------F_UN_TYPE_F_S------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
@@ -2193,10 +2212,10 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     if (extensionEnabled(RISCV_Ext_F, ctx)) {
-      tree->ast_node_type = RISCV_F_UN_TYPE_S;
-      tree->ast_node.f_un_type_s.rs1 = rs1;
-      tree->ast_node.f_un_type_s.rd = rd;
-      tree->ast_node.f_un_type_s.fmv_w_x = RISCV_FMV_W_X;
+      tree->ast_node_type = RISCV_F_UN_TYPE_F_S;
+      tree->ast_node.f_un_type_f_s.rs1 = rs1;
+      tree->ast_node.f_un_type_f_s.rd = rd;
+      tree->ast_node.f_un_type_f_s.fmv_w_x = RISCV_FMV_W_X;
       return;
     }
   }
@@ -2542,7 +2561,7 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_D------------------------------//
+  //----------------------------F_UN_RM_FF_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x2D) {
@@ -2571,18 +2590,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveDoubleFPU(ctx)) && (validDoubleRegs(2, rs1, rd, ctx))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_D;
-        tree->ast_node.f_un_rm_type_d.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_d.rm = rm;
-        tree->ast_node.f_un_rm_type_d.rd = rd;
-        tree->ast_node.f_un_rm_type_d.fcvt_d_lu = RISCV_FSQRT_D;
+        tree->ast_node_type = RISCV_F_UN_RM_FF_TYPE_D;
+        tree->ast_node.f_un_rm_ff_type_d.rs1 = rs1;
+        tree->ast_node.f_un_rm_ff_type_d.rm = rm;
+        tree->ast_node.f_un_rm_ff_type_d.rd = rd;
+        tree->ast_node.f_un_rm_ff_type_d.fcvt_d_s = RISCV_FSQRT_D;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_D------------------------------//
+  //----------------------------F_UN_RM_FX_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x61) {
@@ -2611,18 +2630,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveDoubleFPU(ctx)) && (validDoubleRegs(1, rs1, ctx))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_D;
-        tree->ast_node.f_un_rm_type_d.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_d.rm = rm;
-        tree->ast_node.f_un_rm_type_d.rd = rd;
-        tree->ast_node.f_un_rm_type_d.fcvt_d_lu = RISCV_FCVT_W_D;
+        tree->ast_node_type = RISCV_F_UN_RM_FX_TYPE_D;
+        tree->ast_node.f_un_rm_fx_type_d.rs1 = rs1;
+        tree->ast_node.f_un_rm_fx_type_d.rm = rm;
+        tree->ast_node.f_un_rm_fx_type_d.rd = rd;
+        tree->ast_node.f_un_rm_fx_type_d.fcvt_lu_d = RISCV_FCVT_W_D;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_D------------------------------//
+  //----------------------------F_UN_RM_FX_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x01 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x61) {
@@ -2651,18 +2670,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveDoubleFPU(ctx)) && (validDoubleRegs(1, rs1, ctx))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_D;
-        tree->ast_node.f_un_rm_type_d.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_d.rm = rm;
-        tree->ast_node.f_un_rm_type_d.rd = rd;
-        tree->ast_node.f_un_rm_type_d.fcvt_d_lu = RISCV_FCVT_WU_D;
+        tree->ast_node_type = RISCV_F_UN_RM_FX_TYPE_D;
+        tree->ast_node.f_un_rm_fx_type_d.rs1 = rs1;
+        tree->ast_node.f_un_rm_fx_type_d.rm = rm;
+        tree->ast_node.f_un_rm_fx_type_d.rd = rd;
+        tree->ast_node.f_un_rm_fx_type_d.fcvt_lu_d = RISCV_FCVT_WU_D;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_D------------------------------//
+  //----------------------------F_UN_RM_XF_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x69) {
@@ -2691,18 +2710,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveDoubleFPU(ctx)) && (validDoubleRegs(1, rd, ctx))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_D;
-        tree->ast_node.f_un_rm_type_d.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_d.rm = rm;
-        tree->ast_node.f_un_rm_type_d.rd = rd;
-        tree->ast_node.f_un_rm_type_d.fcvt_d_lu = RISCV_FCVT_D_W;
+        tree->ast_node_type = RISCV_F_UN_RM_XF_TYPE_D;
+        tree->ast_node.f_un_rm_xf_type_d.rs1 = rs1;
+        tree->ast_node.f_un_rm_xf_type_d.rm = rm;
+        tree->ast_node.f_un_rm_xf_type_d.rd = rd;
+        tree->ast_node.f_un_rm_xf_type_d.fcvt_d_lu = RISCV_FCVT_D_W;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_D------------------------------//
+  //----------------------------F_UN_RM_XF_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x01 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x69) {
@@ -2731,18 +2750,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveDoubleFPU(ctx)) && (validDoubleRegs(1, rd, ctx))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_D;
-        tree->ast_node.f_un_rm_type_d.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_d.rm = rm;
-        tree->ast_node.f_un_rm_type_d.rd = rd;
-        tree->ast_node.f_un_rm_type_d.fcvt_d_lu = RISCV_FCVT_D_WU;
+        tree->ast_node_type = RISCV_F_UN_RM_XF_TYPE_D;
+        tree->ast_node.f_un_rm_xf_type_d.rs1 = rs1;
+        tree->ast_node.f_un_rm_xf_type_d.rm = rm;
+        tree->ast_node.f_un_rm_xf_type_d.rd = rd;
+        tree->ast_node.f_un_rm_xf_type_d.fcvt_d_lu = RISCV_FCVT_D_WU;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_D------------------------------//
+  //----------------------------F_UN_RM_FF_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x01 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x20) {
@@ -2771,18 +2790,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveDoubleFPU(ctx)) && (validDoubleRegs(1, rs1, ctx))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_D;
-        tree->ast_node.f_un_rm_type_d.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_d.rm = rm;
-        tree->ast_node.f_un_rm_type_d.rd = rd;
-        tree->ast_node.f_un_rm_type_d.fcvt_d_lu = RISCV_FCVT_S_D;
+        tree->ast_node_type = RISCV_F_UN_RM_FF_TYPE_D;
+        tree->ast_node.f_un_rm_ff_type_d.rs1 = rs1;
+        tree->ast_node.f_un_rm_ff_type_d.rm = rm;
+        tree->ast_node.f_un_rm_ff_type_d.rd = rd;
+        tree->ast_node.f_un_rm_ff_type_d.fcvt_d_s = RISCV_FCVT_S_D;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_D------------------------------//
+  //----------------------------F_UN_RM_FF_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x21) {
@@ -2811,18 +2830,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveDoubleFPU(ctx)) && (validDoubleRegs(1, rd, ctx))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_D;
-        tree->ast_node.f_un_rm_type_d.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_d.rm = rm;
-        tree->ast_node.f_un_rm_type_d.rd = rd;
-        tree->ast_node.f_un_rm_type_d.fcvt_d_lu = RISCV_FCVT_D_S;
+        tree->ast_node_type = RISCV_F_UN_RM_FF_TYPE_D;
+        tree->ast_node.f_un_rm_ff_type_d.rs1 = rs1;
+        tree->ast_node.f_un_rm_ff_type_d.rm = rm;
+        tree->ast_node.f_un_rm_ff_type_d.rd = rd;
+        tree->ast_node.f_un_rm_ff_type_d.fcvt_d_s = RISCV_FCVT_D_S;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_D------------------------------//
+  //----------------------------F_UN_RM_FX_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x02 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x61) {
@@ -2851,18 +2870,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveDoubleFPU(ctx)) && (!(ctx->xlen < 64))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_D;
-        tree->ast_node.f_un_rm_type_d.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_d.rm = rm;
-        tree->ast_node.f_un_rm_type_d.rd = rd;
-        tree->ast_node.f_un_rm_type_d.fcvt_d_lu = RISCV_FCVT_L_D;
+        tree->ast_node_type = RISCV_F_UN_RM_FX_TYPE_D;
+        tree->ast_node.f_un_rm_fx_type_d.rs1 = rs1;
+        tree->ast_node.f_un_rm_fx_type_d.rm = rm;
+        tree->ast_node.f_un_rm_fx_type_d.rd = rd;
+        tree->ast_node.f_un_rm_fx_type_d.fcvt_lu_d = RISCV_FCVT_L_D;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_D------------------------------//
+  //----------------------------F_UN_RM_FX_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x03 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x61) {
@@ -2891,18 +2910,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveDoubleFPU(ctx)) && (!(ctx->xlen < 64))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_D;
-        tree->ast_node.f_un_rm_type_d.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_d.rm = rm;
-        tree->ast_node.f_un_rm_type_d.rd = rd;
-        tree->ast_node.f_un_rm_type_d.fcvt_d_lu = RISCV_FCVT_LU_D;
+        tree->ast_node_type = RISCV_F_UN_RM_FX_TYPE_D;
+        tree->ast_node.f_un_rm_fx_type_d.rs1 = rs1;
+        tree->ast_node.f_un_rm_fx_type_d.rm = rm;
+        tree->ast_node.f_un_rm_fx_type_d.rd = rd;
+        tree->ast_node.f_un_rm_fx_type_d.fcvt_lu_d = RISCV_FCVT_LU_D;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_D------------------------------//
+  //----------------------------F_UN_RM_XF_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x02 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x69) {
@@ -2931,18 +2950,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveDoubleFPU(ctx)) && (!(ctx->xlen < 64))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_D;
-        tree->ast_node.f_un_rm_type_d.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_d.rm = rm;
-        tree->ast_node.f_un_rm_type_d.rd = rd;
-        tree->ast_node.f_un_rm_type_d.fcvt_d_lu = RISCV_FCVT_D_L;
+        tree->ast_node_type = RISCV_F_UN_RM_XF_TYPE_D;
+        tree->ast_node.f_un_rm_xf_type_d.rs1 = rs1;
+        tree->ast_node.f_un_rm_xf_type_d.rm = rm;
+        tree->ast_node.f_un_rm_xf_type_d.rd = rd;
+        tree->ast_node.f_un_rm_xf_type_d.fcvt_d_lu = RISCV_FCVT_D_L;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_D------------------------------//
+  //----------------------------F_UN_RM_XF_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x03 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x69) {
@@ -2971,18 +2990,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveDoubleFPU(ctx)) && (!(ctx->xlen < 64))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_D;
-        tree->ast_node.f_un_rm_type_d.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_d.rm = rm;
-        tree->ast_node.f_un_rm_type_d.rd = rd;
-        tree->ast_node.f_un_rm_type_d.fcvt_d_lu = RISCV_FCVT_D_LU;
+        tree->ast_node_type = RISCV_F_UN_RM_XF_TYPE_D;
+        tree->ast_node.f_un_rm_xf_type_d.rs1 = rs1;
+        tree->ast_node.f_un_rm_xf_type_d.rm = rm;
+        tree->ast_node.f_un_rm_xf_type_d.rd = rd;
+        tree->ast_node.f_un_rm_xf_type_d.fcvt_d_lu = RISCV_FCVT_D_LU;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_D------------------------------//
+  //----------------------------F_BIN_F_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x11) {
@@ -2990,17 +3009,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if ((haveDoubleFPU(ctx)) && (validDoubleRegs(3, rs2, rs1, rd, ctx))) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_D;
-      tree->ast_node.f_bin_type_d.rs2 = rs2;
-      tree->ast_node.f_bin_type_d.rs1 = rs1;
-      tree->ast_node.f_bin_type_d.rd = rd;
-      tree->ast_node.f_bin_type_d.fle_d = RISCV_FSGNJ_D;
+      tree->ast_node_type = RISCV_F_BIN_F_TYPE_D;
+      tree->ast_node.f_bin_f_type_d.rs2 = rs2;
+      tree->ast_node.f_bin_f_type_d.rs1 = rs1;
+      tree->ast_node.f_bin_f_type_d.rd = rd;
+      tree->ast_node.f_bin_f_type_d.fmax_d = RISCV_FSGNJ_D;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_D------------------------------//
+  //----------------------------F_BIN_F_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x1 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x11) {
@@ -3008,17 +3027,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if ((haveDoubleFPU(ctx)) && (validDoubleRegs(3, rs2, rs1, rd, ctx))) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_D;
-      tree->ast_node.f_bin_type_d.rs2 = rs2;
-      tree->ast_node.f_bin_type_d.rs1 = rs1;
-      tree->ast_node.f_bin_type_d.rd = rd;
-      tree->ast_node.f_bin_type_d.fle_d = RISCV_FSGNJN_D;
+      tree->ast_node_type = RISCV_F_BIN_F_TYPE_D;
+      tree->ast_node.f_bin_f_type_d.rs2 = rs2;
+      tree->ast_node.f_bin_f_type_d.rs1 = rs1;
+      tree->ast_node.f_bin_f_type_d.rd = rd;
+      tree->ast_node.f_bin_f_type_d.fmax_d = RISCV_FSGNJN_D;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_D------------------------------//
+  //----------------------------F_BIN_F_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x2 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x11) {
@@ -3026,17 +3045,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if ((haveDoubleFPU(ctx)) && (validDoubleRegs(3, rs2, rs1, rd, ctx))) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_D;
-      tree->ast_node.f_bin_type_d.rs2 = rs2;
-      tree->ast_node.f_bin_type_d.rs1 = rs1;
-      tree->ast_node.f_bin_type_d.rd = rd;
-      tree->ast_node.f_bin_type_d.fle_d = RISCV_FSGNJX_D;
+      tree->ast_node_type = RISCV_F_BIN_F_TYPE_D;
+      tree->ast_node.f_bin_f_type_d.rs2 = rs2;
+      tree->ast_node.f_bin_f_type_d.rs1 = rs1;
+      tree->ast_node.f_bin_f_type_d.rd = rd;
+      tree->ast_node.f_bin_f_type_d.fmax_d = RISCV_FSGNJX_D;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_D------------------------------//
+  //----------------------------F_BIN_F_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x15) {
@@ -3044,17 +3063,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if ((haveDoubleFPU(ctx)) && (validDoubleRegs(3, rs2, rs1, rd, ctx))) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_D;
-      tree->ast_node.f_bin_type_d.rs2 = rs2;
-      tree->ast_node.f_bin_type_d.rs1 = rs1;
-      tree->ast_node.f_bin_type_d.rd = rd;
-      tree->ast_node.f_bin_type_d.fle_d = RISCV_FMIN_D;
+      tree->ast_node_type = RISCV_F_BIN_F_TYPE_D;
+      tree->ast_node.f_bin_f_type_d.rs2 = rs2;
+      tree->ast_node.f_bin_f_type_d.rs1 = rs1;
+      tree->ast_node.f_bin_f_type_d.rd = rd;
+      tree->ast_node.f_bin_f_type_d.fmax_d = RISCV_FMIN_D;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_D------------------------------//
+  //----------------------------F_BIN_F_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x1 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x15) {
@@ -3062,17 +3081,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if ((haveDoubleFPU(ctx)) && (validDoubleRegs(3, rs2, rs1, rd, ctx))) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_D;
-      tree->ast_node.f_bin_type_d.rs2 = rs2;
-      tree->ast_node.f_bin_type_d.rs1 = rs1;
-      tree->ast_node.f_bin_type_d.rd = rd;
-      tree->ast_node.f_bin_type_d.fle_d = RISCV_FMAX_D;
+      tree->ast_node_type = RISCV_F_BIN_F_TYPE_D;
+      tree->ast_node.f_bin_f_type_d.rs2 = rs2;
+      tree->ast_node.f_bin_f_type_d.rs1 = rs1;
+      tree->ast_node.f_bin_f_type_d.rd = rd;
+      tree->ast_node.f_bin_f_type_d.fmax_d = RISCV_FMAX_D;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_D------------------------------//
+  //----------------------------F_BIN_X_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x2 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x51) {
@@ -3080,17 +3099,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if ((haveDoubleFPU(ctx)) && (validDoubleRegs(2, rs2, rs1, ctx))) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_D;
-      tree->ast_node.f_bin_type_d.rs2 = rs2;
-      tree->ast_node.f_bin_type_d.rs1 = rs1;
-      tree->ast_node.f_bin_type_d.rd = rd;
-      tree->ast_node.f_bin_type_d.fle_d = RISCV_FEQ_D;
+      tree->ast_node_type = RISCV_F_BIN_X_TYPE_D;
+      tree->ast_node.f_bin_x_type_d.rs2 = rs2;
+      tree->ast_node.f_bin_x_type_d.rs1 = rs1;
+      tree->ast_node.f_bin_x_type_d.rd = rd;
+      tree->ast_node.f_bin_x_type_d.fle_d = RISCV_FEQ_D;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_D------------------------------//
+  //----------------------------F_BIN_X_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x1 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x51) {
@@ -3098,17 +3117,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if ((haveDoubleFPU(ctx)) && (validDoubleRegs(2, rs2, rs1, ctx))) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_D;
-      tree->ast_node.f_bin_type_d.rs2 = rs2;
-      tree->ast_node.f_bin_type_d.rs1 = rs1;
-      tree->ast_node.f_bin_type_d.rd = rd;
-      tree->ast_node.f_bin_type_d.fle_d = RISCV_FLT_D;
+      tree->ast_node_type = RISCV_F_BIN_X_TYPE_D;
+      tree->ast_node.f_bin_x_type_d.rs2 = rs2;
+      tree->ast_node.f_bin_x_type_d.rs1 = rs1;
+      tree->ast_node.f_bin_x_type_d.rd = rd;
+      tree->ast_node.f_bin_x_type_d.fle_d = RISCV_FLT_D;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_D------------------------------//
+  //----------------------------F_BIN_X_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x51) {
@@ -3116,17 +3135,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if ((haveDoubleFPU(ctx)) && (validDoubleRegs(2, rs2, rs1, ctx))) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_D;
-      tree->ast_node.f_bin_type_d.rs2 = rs2;
-      tree->ast_node.f_bin_type_d.rs1 = rs1;
-      tree->ast_node.f_bin_type_d.rd = rd;
-      tree->ast_node.f_bin_type_d.fle_d = RISCV_FLE_D;
+      tree->ast_node_type = RISCV_F_BIN_X_TYPE_D;
+      tree->ast_node.f_bin_x_type_d.rs2 = rs2;
+      tree->ast_node.f_bin_x_type_d.rs1 = rs1;
+      tree->ast_node.f_bin_x_type_d.rd = rd;
+      tree->ast_node.f_bin_x_type_d.fle_d = RISCV_FLE_D;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_TYPE_D------------------------------//
+  //----------------------------F_UN_X_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x1 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
@@ -3134,16 +3153,16 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     if ((haveDoubleFPU(ctx)) && (validDoubleRegs(1, rs1, ctx))) {
-      tree->ast_node_type = RISCV_F_UN_TYPE_D;
-      tree->ast_node.f_un_type_d.rs1 = rs1;
-      tree->ast_node.f_un_type_d.rd = rd;
-      tree->ast_node.f_un_type_d.fmv_d_x = RISCV_FCLASS_D;
+      tree->ast_node_type = RISCV_F_UN_X_TYPE_D;
+      tree->ast_node.f_un_x_type_d.rs1 = rs1;
+      tree->ast_node.f_un_x_type_d.rd = rd;
+      tree->ast_node.f_un_x_type_d.fmv_x_d = RISCV_FCLASS_D;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_TYPE_D------------------------------//
+  //----------------------------F_UN_X_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
@@ -3151,16 +3170,16 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     if ((extensionEnabled(RISCV_Ext_D, ctx)) && (!(ctx->xlen < 64))) {
-      tree->ast_node_type = RISCV_F_UN_TYPE_D;
-      tree->ast_node.f_un_type_d.rs1 = rs1;
-      tree->ast_node.f_un_type_d.rd = rd;
-      tree->ast_node.f_un_type_d.fmv_d_x = RISCV_FMV_X_D;
+      tree->ast_node_type = RISCV_F_UN_X_TYPE_D;
+      tree->ast_node.f_un_x_type_d.rs1 = rs1;
+      tree->ast_node.f_un_x_type_d.rd = rd;
+      tree->ast_node.f_un_x_type_d.fmv_x_d = RISCV_FMV_X_D;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_TYPE_D------------------------------//
+  //----------------------------F_UN_F_TYPE_D------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
@@ -3168,10 +3187,10 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     if ((extensionEnabled(RISCV_Ext_D, ctx)) && (!(ctx->xlen < 64))) {
-      tree->ast_node_type = RISCV_F_UN_TYPE_D;
-      tree->ast_node.f_un_type_d.rs1 = rs1;
-      tree->ast_node.f_un_type_d.rd = rd;
-      tree->ast_node.f_un_type_d.fmv_d_x = RISCV_FMV_D_X;
+      tree->ast_node_type = RISCV_F_UN_F_TYPE_D;
+      tree->ast_node.f_un_f_type_d.rs1 = rs1;
+      tree->ast_node.f_un_f_type_d.rd = rd;
+      tree->ast_node.f_un_f_type_d.fmv_d_x = RISCV_FMV_D_X;
       return;
     }
   }
@@ -4355,7 +4374,7 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_H------------------------------//
+  //----------------------------F_BIN_F_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x12) {
@@ -4363,17 +4382,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveHalfFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_H;
-      tree->ast_node.f_bin_type_h.rs2 = rs2;
-      tree->ast_node.f_bin_type_h.rs1 = rs1;
-      tree->ast_node.f_bin_type_h.rd = rd;
-      tree->ast_node.f_bin_type_h.fle_h = RISCV_FSGNJ_H;
+      tree->ast_node_type = RISCV_F_BIN_F_TYPE_H;
+      tree->ast_node.f_bin_f_type_h.rs2 = rs2;
+      tree->ast_node.f_bin_f_type_h.rs1 = rs1;
+      tree->ast_node.f_bin_f_type_h.rd = rd;
+      tree->ast_node.f_bin_f_type_h.fmax_h = RISCV_FSGNJ_H;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_H------------------------------//
+  //----------------------------F_BIN_F_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x1 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x12) {
@@ -4381,17 +4400,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveHalfFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_H;
-      tree->ast_node.f_bin_type_h.rs2 = rs2;
-      tree->ast_node.f_bin_type_h.rs1 = rs1;
-      tree->ast_node.f_bin_type_h.rd = rd;
-      tree->ast_node.f_bin_type_h.fle_h = RISCV_FSGNJN_H;
+      tree->ast_node_type = RISCV_F_BIN_F_TYPE_H;
+      tree->ast_node.f_bin_f_type_h.rs2 = rs2;
+      tree->ast_node.f_bin_f_type_h.rs1 = rs1;
+      tree->ast_node.f_bin_f_type_h.rd = rd;
+      tree->ast_node.f_bin_f_type_h.fmax_h = RISCV_FSGNJN_H;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_H------------------------------//
+  //----------------------------F_BIN_F_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x2 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x12) {
@@ -4399,17 +4418,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveHalfFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_H;
-      tree->ast_node.f_bin_type_h.rs2 = rs2;
-      tree->ast_node.f_bin_type_h.rs1 = rs1;
-      tree->ast_node.f_bin_type_h.rd = rd;
-      tree->ast_node.f_bin_type_h.fle_h = RISCV_FSGNJX_H;
+      tree->ast_node_type = RISCV_F_BIN_F_TYPE_H;
+      tree->ast_node.f_bin_f_type_h.rs2 = rs2;
+      tree->ast_node.f_bin_f_type_h.rs1 = rs1;
+      tree->ast_node.f_bin_f_type_h.rd = rd;
+      tree->ast_node.f_bin_f_type_h.fmax_h = RISCV_FSGNJX_H;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_H------------------------------//
+  //----------------------------F_BIN_F_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x16) {
@@ -4417,17 +4436,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveHalfFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_H;
-      tree->ast_node.f_bin_type_h.rs2 = rs2;
-      tree->ast_node.f_bin_type_h.rs1 = rs1;
-      tree->ast_node.f_bin_type_h.rd = rd;
-      tree->ast_node.f_bin_type_h.fle_h = RISCV_FMIN_H;
+      tree->ast_node_type = RISCV_F_BIN_F_TYPE_H;
+      tree->ast_node.f_bin_f_type_h.rs2 = rs2;
+      tree->ast_node.f_bin_f_type_h.rs1 = rs1;
+      tree->ast_node.f_bin_f_type_h.rd = rd;
+      tree->ast_node.f_bin_f_type_h.fmax_h = RISCV_FMIN_H;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_H------------------------------//
+  //----------------------------F_BIN_F_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x1 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x16) {
@@ -4435,17 +4454,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveHalfFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_H;
-      tree->ast_node.f_bin_type_h.rs2 = rs2;
-      tree->ast_node.f_bin_type_h.rs1 = rs1;
-      tree->ast_node.f_bin_type_h.rd = rd;
-      tree->ast_node.f_bin_type_h.fle_h = RISCV_FMAX_H;
+      tree->ast_node_type = RISCV_F_BIN_F_TYPE_H;
+      tree->ast_node.f_bin_f_type_h.rs2 = rs2;
+      tree->ast_node.f_bin_f_type_h.rs1 = rs1;
+      tree->ast_node.f_bin_f_type_h.rd = rd;
+      tree->ast_node.f_bin_f_type_h.fmax_h = RISCV_FMAX_H;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_H------------------------------//
+  //----------------------------F_BIN_X_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x2 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x52) {
@@ -4453,17 +4472,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveHalfFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_H;
-      tree->ast_node.f_bin_type_h.rs2 = rs2;
-      tree->ast_node.f_bin_type_h.rs1 = rs1;
-      tree->ast_node.f_bin_type_h.rd = rd;
-      tree->ast_node.f_bin_type_h.fle_h = RISCV_FEQ_H;
+      tree->ast_node_type = RISCV_F_BIN_X_TYPE_H;
+      tree->ast_node.f_bin_x_type_h.rs2 = rs2;
+      tree->ast_node.f_bin_x_type_h.rs1 = rs1;
+      tree->ast_node.f_bin_x_type_h.rd = rd;
+      tree->ast_node.f_bin_x_type_h.fle_h = RISCV_FEQ_H;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_H------------------------------//
+  //----------------------------F_BIN_X_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x1 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x52) {
@@ -4471,17 +4490,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveHalfFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_H;
-      tree->ast_node.f_bin_type_h.rs2 = rs2;
-      tree->ast_node.f_bin_type_h.rs1 = rs1;
-      tree->ast_node.f_bin_type_h.rd = rd;
-      tree->ast_node.f_bin_type_h.fle_h = RISCV_FLT_H;
+      tree->ast_node_type = RISCV_F_BIN_X_TYPE_H;
+      tree->ast_node.f_bin_x_type_h.rs2 = rs2;
+      tree->ast_node.f_bin_x_type_h.rs1 = rs1;
+      tree->ast_node.f_bin_x_type_h.rd = rd;
+      tree->ast_node.f_bin_x_type_h.fle_h = RISCV_FLT_H;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_BIN_TYPE_H------------------------------//
+  //----------------------------F_BIN_X_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x52) {
@@ -4489,17 +4508,17 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 20, 24);
     if (haveHalfFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_BIN_TYPE_H;
-      tree->ast_node.f_bin_type_h.rs2 = rs2;
-      tree->ast_node.f_bin_type_h.rs1 = rs1;
-      tree->ast_node.f_bin_type_h.rd = rd;
-      tree->ast_node.f_bin_type_h.fle_h = RISCV_FLE_H;
+      tree->ast_node_type = RISCV_F_BIN_X_TYPE_H;
+      tree->ast_node.f_bin_x_type_h.rs2 = rs2;
+      tree->ast_node.f_bin_x_type_h.rs1 = rs1;
+      tree->ast_node.f_bin_x_type_h.rd = rd;
+      tree->ast_node.f_bin_x_type_h.fle_h = RISCV_FLE_H;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_H------------------------------//
+  //----------------------------F_UN_RM_FF_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x2E) {
@@ -4528,18 +4547,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if (haveHalfFPU(ctx)) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_H;
-        tree->ast_node.f_un_rm_type_h.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_h.rm = rm;
-        tree->ast_node.f_un_rm_type_h.rd = rd;
-        tree->ast_node.f_un_rm_type_h.fcvt_h_lu = RISCV_FSQRT_H;
+        tree->ast_node_type = RISCV_F_UN_RM_FF_TYPE_H;
+        tree->ast_node.f_un_rm_ff_type_h.rs1 = rs1;
+        tree->ast_node.f_un_rm_ff_type_h.rm = rm;
+        tree->ast_node.f_un_rm_ff_type_h.rd = rd;
+        tree->ast_node.f_un_rm_ff_type_h.fcvt_d_h = RISCV_FSQRT_H;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_H------------------------------//
+  //----------------------------F_UN_RM_FX_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x62) {
@@ -4568,18 +4587,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if (haveHalfFPU(ctx)) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_H;
-        tree->ast_node.f_un_rm_type_h.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_h.rm = rm;
-        tree->ast_node.f_un_rm_type_h.rd = rd;
-        tree->ast_node.f_un_rm_type_h.fcvt_h_lu = RISCV_FCVT_W_H;
+        tree->ast_node_type = RISCV_F_UN_RM_FX_TYPE_H;
+        tree->ast_node.f_un_rm_fx_type_h.rs1 = rs1;
+        tree->ast_node.f_un_rm_fx_type_h.rm = rm;
+        tree->ast_node.f_un_rm_fx_type_h.rd = rd;
+        tree->ast_node.f_un_rm_fx_type_h.fcvt_lu_h = RISCV_FCVT_W_H;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_H------------------------------//
+  //----------------------------F_UN_RM_FX_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x01 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x62) {
@@ -4608,18 +4627,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if (haveHalfFPU(ctx)) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_H;
-        tree->ast_node.f_un_rm_type_h.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_h.rm = rm;
-        tree->ast_node.f_un_rm_type_h.rd = rd;
-        tree->ast_node.f_un_rm_type_h.fcvt_h_lu = RISCV_FCVT_WU_H;
+        tree->ast_node_type = RISCV_F_UN_RM_FX_TYPE_H;
+        tree->ast_node.f_un_rm_fx_type_h.rs1 = rs1;
+        tree->ast_node.f_un_rm_fx_type_h.rm = rm;
+        tree->ast_node.f_un_rm_fx_type_h.rd = rd;
+        tree->ast_node.f_un_rm_fx_type_h.fcvt_lu_h = RISCV_FCVT_WU_H;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_H------------------------------//
+  //----------------------------F_UN_RM_XF_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x6A) {
@@ -4648,18 +4667,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if (haveHalfFPU(ctx)) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_H;
-        tree->ast_node.f_un_rm_type_h.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_h.rm = rm;
-        tree->ast_node.f_un_rm_type_h.rd = rd;
-        tree->ast_node.f_un_rm_type_h.fcvt_h_lu = RISCV_FCVT_H_W;
+        tree->ast_node_type = RISCV_F_UN_RM_XF_TYPE_H;
+        tree->ast_node.f_un_rm_xf_type_h.rs1 = rs1;
+        tree->ast_node.f_un_rm_xf_type_h.rm = rm;
+        tree->ast_node.f_un_rm_xf_type_h.rd = rd;
+        tree->ast_node.f_un_rm_xf_type_h.fcvt_h_lu = RISCV_FCVT_H_W;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_H------------------------------//
+  //----------------------------F_UN_RM_XF_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x01 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x6A) {
@@ -4688,18 +4707,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if (haveHalfFPU(ctx)) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_H;
-        tree->ast_node.f_un_rm_type_h.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_h.rm = rm;
-        tree->ast_node.f_un_rm_type_h.rd = rd;
-        tree->ast_node.f_un_rm_type_h.fcvt_h_lu = RISCV_FCVT_H_WU;
+        tree->ast_node_type = RISCV_F_UN_RM_XF_TYPE_H;
+        tree->ast_node.f_un_rm_xf_type_h.rs1 = rs1;
+        tree->ast_node.f_un_rm_xf_type_h.rm = rm;
+        tree->ast_node.f_un_rm_xf_type_h.rd = rd;
+        tree->ast_node.f_un_rm_xf_type_h.fcvt_h_lu = RISCV_FCVT_H_WU;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_H------------------------------//
+  //----------------------------F_UN_RM_FF_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x22) {
@@ -4728,18 +4747,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if (haveHalfMin(ctx)) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_H;
-        tree->ast_node.f_un_rm_type_h.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_h.rm = rm;
-        tree->ast_node.f_un_rm_type_h.rd = rd;
-        tree->ast_node.f_un_rm_type_h.fcvt_h_lu = RISCV_FCVT_H_S;
+        tree->ast_node_type = RISCV_F_UN_RM_FF_TYPE_H;
+        tree->ast_node.f_un_rm_ff_type_h.rs1 = rs1;
+        tree->ast_node.f_un_rm_ff_type_h.rm = rm;
+        tree->ast_node.f_un_rm_ff_type_h.rd = rd;
+        tree->ast_node.f_un_rm_ff_type_h.fcvt_d_h = RISCV_FCVT_H_S;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_H------------------------------//
+  //----------------------------F_UN_RM_FF_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x01 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x22) {
@@ -4769,18 +4788,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveHalfMin(ctx)) &&
           ((haveDoubleFPU(ctx)) && (validDoubleRegs(1, rs1, ctx)))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_H;
-        tree->ast_node.f_un_rm_type_h.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_h.rm = rm;
-        tree->ast_node.f_un_rm_type_h.rd = rd;
-        tree->ast_node.f_un_rm_type_h.fcvt_h_lu = RISCV_FCVT_H_D;
+        tree->ast_node_type = RISCV_F_UN_RM_FF_TYPE_H;
+        tree->ast_node.f_un_rm_ff_type_h.rs1 = rs1;
+        tree->ast_node.f_un_rm_ff_type_h.rm = rm;
+        tree->ast_node.f_un_rm_ff_type_h.rd = rd;
+        tree->ast_node.f_un_rm_ff_type_h.fcvt_d_h = RISCV_FCVT_H_D;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_H------------------------------//
+  //----------------------------F_UN_RM_FF_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x02 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x20) {
@@ -4809,18 +4828,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if (haveHalfMin(ctx)) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_H;
-        tree->ast_node.f_un_rm_type_h.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_h.rm = rm;
-        tree->ast_node.f_un_rm_type_h.rd = rd;
-        tree->ast_node.f_un_rm_type_h.fcvt_h_lu = RISCV_FCVT_S_H;
+        tree->ast_node_type = RISCV_F_UN_RM_FF_TYPE_H;
+        tree->ast_node.f_un_rm_ff_type_h.rs1 = rs1;
+        tree->ast_node.f_un_rm_ff_type_h.rm = rm;
+        tree->ast_node.f_un_rm_ff_type_h.rd = rd;
+        tree->ast_node.f_un_rm_ff_type_h.fcvt_d_h = RISCV_FCVT_S_H;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_H------------------------------//
+  //----------------------------F_UN_RM_FF_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x02 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x21) {
@@ -4850,18 +4869,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveHalfMin(ctx)) &&
           ((haveDoubleFPU(ctx)) && (validDoubleRegs(1, rd, ctx)))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_H;
-        tree->ast_node.f_un_rm_type_h.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_h.rm = rm;
-        tree->ast_node.f_un_rm_type_h.rd = rd;
-        tree->ast_node.f_un_rm_type_h.fcvt_h_lu = RISCV_FCVT_D_H;
+        tree->ast_node_type = RISCV_F_UN_RM_FF_TYPE_H;
+        tree->ast_node.f_un_rm_ff_type_h.rs1 = rs1;
+        tree->ast_node.f_un_rm_ff_type_h.rm = rm;
+        tree->ast_node.f_un_rm_ff_type_h.rd = rd;
+        tree->ast_node.f_un_rm_ff_type_h.fcvt_d_h = RISCV_FCVT_D_H;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_H------------------------------//
+  //----------------------------F_UN_RM_FX_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x02 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x62) {
@@ -4890,18 +4909,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveHalfFPU(ctx)) && (!(ctx->xlen < 64))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_H;
-        tree->ast_node.f_un_rm_type_h.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_h.rm = rm;
-        tree->ast_node.f_un_rm_type_h.rd = rd;
-        tree->ast_node.f_un_rm_type_h.fcvt_h_lu = RISCV_FCVT_L_H;
+        tree->ast_node_type = RISCV_F_UN_RM_FX_TYPE_H;
+        tree->ast_node.f_un_rm_fx_type_h.rs1 = rs1;
+        tree->ast_node.f_un_rm_fx_type_h.rm = rm;
+        tree->ast_node.f_un_rm_fx_type_h.rd = rd;
+        tree->ast_node.f_un_rm_fx_type_h.fcvt_lu_h = RISCV_FCVT_L_H;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_H------------------------------//
+  //----------------------------F_UN_RM_FX_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x03 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x62) {
@@ -4930,18 +4949,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveHalfFPU(ctx)) && (!(ctx->xlen < 64))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_H;
-        tree->ast_node.f_un_rm_type_h.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_h.rm = rm;
-        tree->ast_node.f_un_rm_type_h.rd = rd;
-        tree->ast_node.f_un_rm_type_h.fcvt_h_lu = RISCV_FCVT_LU_H;
+        tree->ast_node_type = RISCV_F_UN_RM_FX_TYPE_H;
+        tree->ast_node.f_un_rm_fx_type_h.rs1 = rs1;
+        tree->ast_node.f_un_rm_fx_type_h.rm = rm;
+        tree->ast_node.f_un_rm_fx_type_h.rd = rd;
+        tree->ast_node.f_un_rm_fx_type_h.fcvt_lu_h = RISCV_FCVT_LU_H;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_H------------------------------//
+  //----------------------------F_UN_RM_XF_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x02 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x6A) {
@@ -4970,18 +4989,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveHalfFPU(ctx)) && (!(ctx->xlen < 64))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_H;
-        tree->ast_node.f_un_rm_type_h.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_h.rm = rm;
-        tree->ast_node.f_un_rm_type_h.rd = rd;
-        tree->ast_node.f_un_rm_type_h.fcvt_h_lu = RISCV_FCVT_H_L;
+        tree->ast_node_type = RISCV_F_UN_RM_XF_TYPE_H;
+        tree->ast_node.f_un_rm_xf_type_h.rs1 = rs1;
+        tree->ast_node.f_un_rm_xf_type_h.rm = rm;
+        tree->ast_node.f_un_rm_xf_type_h.rd = rd;
+        tree->ast_node.f_un_rm_xf_type_h.fcvt_h_lu = RISCV_FCVT_H_L;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_RM_TYPE_H------------------------------//
+  //----------------------------F_UN_RM_XF_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x03 &&
       SLICE_BITVEC(binary_stream, 25, 31) == 0x6A) {
@@ -5010,18 +5029,18 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if ((haveHalfFPU(ctx)) && (!(ctx->xlen < 64))) {
-        tree->ast_node_type = RISCV_F_UN_RM_TYPE_H;
-        tree->ast_node.f_un_rm_type_h.rs1 = rs1;
-        tree->ast_node.f_un_rm_type_h.rm = rm;
-        tree->ast_node.f_un_rm_type_h.rd = rd;
-        tree->ast_node.f_un_rm_type_h.fcvt_h_lu = RISCV_FCVT_H_LU;
+        tree->ast_node_type = RISCV_F_UN_RM_XF_TYPE_H;
+        tree->ast_node.f_un_rm_xf_type_h.rs1 = rs1;
+        tree->ast_node.f_un_rm_xf_type_h.rm = rm;
+        tree->ast_node.f_un_rm_xf_type_h.rd = rd;
+        tree->ast_node.f_un_rm_xf_type_h.fcvt_h_lu = RISCV_FCVT_H_LU;
         return;
       }
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_TYPE_H------------------------------//
+  //----------------------------F_UN_X_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x1 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
@@ -5029,16 +5048,16 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     if (haveHalfFPU(ctx)) {
-      tree->ast_node_type = RISCV_F_UN_TYPE_H;
-      tree->ast_node.f_un_type_h.rs1 = rs1;
-      tree->ast_node.f_un_type_h.rd = rd;
-      tree->ast_node.f_un_type_h.fmv_h_x = RISCV_FCLASS_H;
+      tree->ast_node_type = RISCV_F_UN_X_TYPE_H;
+      tree->ast_node.f_un_x_type_h.rs1 = rs1;
+      tree->ast_node.f_un_x_type_h.rd = rd;
+      tree->ast_node.f_un_x_type_h.fmv_x_h = RISCV_FCLASS_H;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_TYPE_H------------------------------//
+  //----------------------------F_UN_X_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
@@ -5046,16 +5065,16 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     if (extensionEnabled(RISCV_Ext_Zfhmin, ctx)) {
-      tree->ast_node_type = RISCV_F_UN_TYPE_H;
-      tree->ast_node.f_un_type_h.rs1 = rs1;
-      tree->ast_node.f_un_type_h.rd = rd;
-      tree->ast_node.f_un_type_h.fmv_h_x = RISCV_FMV_X_H;
+      tree->ast_node_type = RISCV_F_UN_X_TYPE_H;
+      tree->ast_node.f_un_x_type_h.rs1 = rs1;
+      tree->ast_node.f_un_x_type_h.rd = rd;
+      tree->ast_node.f_un_x_type_h.fmv_x_h = RISCV_FMV_X_H;
       return;
     }
   }
   //------------------------------------------------------------------------------------//
 
-  //----------------------------F_UN_TYPE_H------------------------------//
+  //----------------------------F_UN_F_TYPE_H------------------------------//
   if (SLICE_BITVEC(binary_stream, 0, 6) == 0x53 &&
       SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
       SLICE_BITVEC(binary_stream, 20, 24) == 0x00 &&
@@ -5063,10 +5082,10 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
     if (extensionEnabled(RISCV_Ext_Zfhmin, ctx)) {
-      tree->ast_node_type = RISCV_F_UN_TYPE_H;
-      tree->ast_node.f_un_type_h.rs1 = rs1;
-      tree->ast_node.f_un_type_h.rd = rd;
-      tree->ast_node.f_un_type_h.fmv_h_x = RISCV_FMV_H_X;
+      tree->ast_node_type = RISCV_F_UN_F_TYPE_H;
+      tree->ast_node.f_un_f_type_h.rs1 = rs1;
+      tree->ast_node.f_un_f_type_h.rd = rd;
+      tree->ast_node.f_un_f_type_h.fmv_h_x = RISCV_FMV_H_X;
       return;
     }
   }
@@ -9398,7 +9417,7 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
       uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
       if (extensionEnabled(RISCV_Ext_Zicbom, ctx)) {
         tree->ast_node_type = RISCV_ZICBOM;
-        tree->ast_node.riscv_zicbom.cbop = cbop;
+        tree->ast_node.riscv_zicbom.cbo_inval = cbop;
         tree->ast_node.riscv_zicbom.rs1 = rs1;
         return;
       }
@@ -9415,6 +9434,304 @@ static void decode(struct ast *tree, uint64_t binary_stream, RVContext *ctx) {
     if (extensionEnabled(RISCV_Ext_Zicboz, ctx)) {
       tree->ast_node_type = RISCV_ZICBOZ;
       tree->ast_node.riscv_zicboz = rs1;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VANDN_VV------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x01) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t vs1 = SLICE_BITVEC(binary_stream, 15, 19);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvkb, ctx)) {
+      tree->ast_node_type = RISCV_VANDN_VV;
+      tree->ast_node.vandn_vv.vm = vm;
+      tree->ast_node.vandn_vv.vs1 = vs1;
+      tree->ast_node.vandn_vv.vs2 = vs2;
+      tree->ast_node.vandn_vv.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VANDN_VX------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x4 &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x01) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvkb, ctx)) {
+      tree->ast_node_type = RISCV_VANDN_VX;
+      tree->ast_node.vandn_vx.vm = vm;
+      tree->ast_node.vandn_vx.vs2 = vs2;
+      tree->ast_node.vandn_vx.rs1 = rs1;
+      tree->ast_node.vandn_vx.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VBREV_V------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x2 &&
+      SLICE_BITVEC(binary_stream, 15, 19) == 0x0A &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x12) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvbb, ctx)) {
+      tree->ast_node_type = RISCV_VBREV_V;
+      tree->ast_node.vbrev_v.vm = vm;
+      tree->ast_node.vbrev_v.vs2 = vs2;
+      tree->ast_node.vbrev_v.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VBREV8_V------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x2 &&
+      SLICE_BITVEC(binary_stream, 15, 19) == 0x08 &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x12) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvkb, ctx)) {
+      tree->ast_node_type = RISCV_VBREV8_V;
+      tree->ast_node.vbrev8_v.vm = vm;
+      tree->ast_node.vbrev8_v.vs2 = vs2;
+      tree->ast_node.vbrev8_v.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VREV8_V------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x2 &&
+      SLICE_BITVEC(binary_stream, 15, 19) == 0x09 &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x12) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvkb, ctx)) {
+      tree->ast_node_type = RISCV_VREV8_V;
+      tree->ast_node.vrev8_v.vm = vm;
+      tree->ast_node.vrev8_v.vs2 = vs2;
+      tree->ast_node.vrev8_v.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VCLZ_V------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x2 &&
+      SLICE_BITVEC(binary_stream, 15, 19) == 0x0C &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x12) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvbb, ctx)) {
+      tree->ast_node_type = RISCV_VCLZ_V;
+      tree->ast_node.vclz_v.vm = vm;
+      tree->ast_node.vclz_v.vs2 = vs2;
+      tree->ast_node.vclz_v.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VCTZ_V------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x2 &&
+      SLICE_BITVEC(binary_stream, 15, 19) == 0x0D &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x12) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvbb, ctx)) {
+      tree->ast_node_type = RISCV_VCTZ_V;
+      tree->ast_node.vctz_v.vm = vm;
+      tree->ast_node.vctz_v.vs2 = vs2;
+      tree->ast_node.vctz_v.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VCPOP_V------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x2 &&
+      SLICE_BITVEC(binary_stream, 15, 19) == 0x0E &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x12) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvbb, ctx)) {
+      tree->ast_node_type = RISCV_VCPOP_V;
+      tree->ast_node.vcpop_v.vm = vm;
+      tree->ast_node.vcpop_v.vs2 = vs2;
+      tree->ast_node.vcpop_v.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VROL_VV------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x15) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t vs1 = SLICE_BITVEC(binary_stream, 15, 19);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvkb, ctx)) {
+      tree->ast_node_type = RISCV_VROL_VV;
+      tree->ast_node.vrol_vv.vm = vm;
+      tree->ast_node.vrol_vv.vs1 = vs1;
+      tree->ast_node.vrol_vv.vs2 = vs2;
+      tree->ast_node.vrol_vv.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VROL_VX------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x4 &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x15) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvkb, ctx)) {
+      tree->ast_node_type = RISCV_VROL_VX;
+      tree->ast_node.vrol_vx.vm = vm;
+      tree->ast_node.vrol_vx.vs2 = vs2;
+      tree->ast_node.vrol_vx.rs1 = rs1;
+      tree->ast_node.vrol_vx.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VROR_VV------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x14) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t vs1 = SLICE_BITVEC(binary_stream, 15, 19);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvkb, ctx)) {
+      tree->ast_node_type = RISCV_VROR_VV;
+      tree->ast_node.vror_vv.vm = vm;
+      tree->ast_node.vror_vv.vs1 = vs1;
+      tree->ast_node.vror_vv.vs2 = vs2;
+      tree->ast_node.vror_vv.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VROR_VX------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x4 &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x14) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvkb, ctx)) {
+      tree->ast_node_type = RISCV_VROR_VX;
+      tree->ast_node.vror_vx.vm = vm;
+      tree->ast_node.vror_vx.vs2 = vs2;
+      tree->ast_node.vror_vx.rs1 = rs1;
+      tree->ast_node.vror_vx.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VROR_VI------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x3 &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x14) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t uimm = SLICE_BITVEC(binary_stream, 15, 19);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvkb, ctx)) {
+      tree->ast_node_type = RISCV_VROR_VI;
+      tree->ast_node.vror_vi.vm = vm;
+      tree->ast_node.vror_vi.vs2 = vs2;
+      tree->ast_node.vror_vi.uimm = uimm;
+      tree->ast_node.vror_vi.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VWSLL_VV------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x0 &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x35) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t vs1 = SLICE_BITVEC(binary_stream, 15, 19);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvbb, ctx)) {
+      tree->ast_node_type = RISCV_VWSLL_VV;
+      tree->ast_node.vwsll_vv.vm = vm;
+      tree->ast_node.vwsll_vv.vs2 = vs2;
+      tree->ast_node.vwsll_vv.vs1 = vs1;
+      tree->ast_node.vwsll_vv.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VWSLL_VX------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x4 &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x35) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t rs1 = SLICE_BITVEC(binary_stream, 15, 19);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvbb, ctx)) {
+      tree->ast_node_type = RISCV_VWSLL_VX;
+      tree->ast_node.vwsll_vx.vm = vm;
+      tree->ast_node.vwsll_vx.vs2 = vs2;
+      tree->ast_node.vwsll_vx.rs1 = rs1;
+      tree->ast_node.vwsll_vx.vd = vd;
+      return;
+    }
+  }
+  //------------------------------------------------------------------------------------//
+
+  //----------------------------VWSLL_VI------------------------------//
+  if (SLICE_BITVEC(binary_stream, 0, 6) == 0x57 &&
+      SLICE_BITVEC(binary_stream, 12, 14) == 0x3 &&
+      SLICE_BITVEC(binary_stream, 26, 31) == 0x35) {
+    uint64_t vd = SLICE_BITVEC(binary_stream, 7, 11);
+    uint64_t uimm = SLICE_BITVEC(binary_stream, 15, 19);
+    uint64_t vs2 = SLICE_BITVEC(binary_stream, 20, 24);
+    uint64_t vm = SLICE_BITVEC(binary_stream, 25, 25);
+    if (extensionEnabled(RISCV_Ext_Zvbb, ctx)) {
+      tree->ast_node_type = RISCV_VWSLL_VI;
+      tree->ast_node.vwsll_vi.vm = vm;
+      tree->ast_node.vwsll_vi.vs2 = vs2;
+      tree->ast_node.vwsll_vi.uimm = uimm;
+      tree->ast_node.vwsll_vi.vd = vd;
       return;
     }
   }

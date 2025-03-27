@@ -130,13 +130,13 @@ let destructure_mapping mapping_clauses typ_name
             inner_destructurer p1 p2 loc
         | _ ->
             failwith
-              ("Both sides of a bidiectional T <->" ^ typ_name
+              ("Both sides of a bidirectional T <-> " ^ typ_name
              ^ " mapping must be simple patterns"
               )
       )
     | _ ->
         failwith
-          ("Non-bidirectional T <->" ^ typ_name ^ "mappings are not supported")
+          ("Non-bidirectional T <-> " ^ typ_name ^ " mappings are not supported")
   in
 
   List.map destructure_clause mapping_clauses

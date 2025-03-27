@@ -10,19 +10,7 @@ open Utils
 
 open Hashset
 
-(* The four register files in RISCV and its standard extensions *)
-(* The float and double register files overlap, but they should still
-   be counted as seperate register files for max clarity of information *)
-type regfile = Base | Float | Double | Vector
-type regaccess = Read | Write
-type reg_operand = Reg of int * regfile * regaccess
-
-type imm_operand = Imm of int
-
-type operand_info = {
-  registers_info : (string, reg_operand list) Hashtbl.t;
-  immediates_info : (string, imm_operand list) Hashtbl.t;
-}
+open Gen_operand_info_defs
 
 type 'a operand_gen_iteration_state = {
   analysis : sail_analysis_result;
@@ -108,14 +96,21 @@ let rec infer_register_files ?(rootcall = false) regidx_fun_registery
   let aliases_to_operands = Hashtbl.create 10 in
   let infer_regfile _ name args =
     match infer_regfile_getter_or_setter name args op_names with
-    | Some (name, regfile, regaccess) ->
+    | Some (name, regfile, regaccess) when not (Hashtbl.mem operand_types name)
+      ->
         Hashtbl.add operand_types name (regfile, regaccess)
     | None ->
         let result =
           infer_regfile_across_funcall regidx_fun_registery inferred_regfiles
             op_names name args
         in
-        Hashtbl.iter (fun k v -> Hashtbl.add operand_types k v) result
+        Hashtbl.iter
+          (fun k v ->
+            if not (Hashtbl.mem operand_types k) then
+              Hashtbl.add operand_types k v
+          )
+          result
+    | _ -> ()
   in
   let add_alias _ let_binding _ =
     match get_names_in_letbind let_binding with
@@ -222,18 +217,21 @@ and infer_regfile_across_function_call regidx_functions_registery
   )
   else Hashtbl.create 1
 
-and infer_regfile_across_execute_call op_info operand_names args =
+and infer_regfile_across_execute_call inferred_regfiles operand_names args =
   match args with
   | [E_aux (E_app (i, args), _)] -> (
       try
         let operand_regfiles = Hashtbl.create 20 in
         let case_name = id_to_str i in
-        let case_info = Hashtbl.find op_info case_name in
+        let case_info = Hashtbl.find inferred_regfiles case_name in
+        let _, case_info =
+          List.find (fun (spec, ops) -> Option.is_none spec) case_info
+        in
         let arg_names =
           match args with
           | [E_aux (E_id a, _)] -> [(0, id_to_str a)]
           | [E_aux (E_tuple args, _)] -> get_names_occuring_in_exprs args
-          | _ -> failwith "Error: unsupported argument pattern of execute() "
+          | _ -> []
         in
         List.iter
           (fun (idx, name) ->
@@ -253,6 +251,35 @@ and infer_regfile_across_execute_call op_info operand_names args =
   | _ -> failwith "Error: unsupported pattern of calling execute()"
 
 let infer_registers state _ fun_id func =
+  let get_specialization args =
+    match args with
+    | P_aux (P_app (_, args), _) ->
+        let spec = ref None in
+        args
+        |> List.iteri (fun idx a ->
+               match a with
+               | P_aux (P_tuple args, _) ->
+                   List.iteri
+                     (fun index a ->
+                       match a with
+                       | P_aux (P_id i, _)
+                         when is_member_of_enum state.analysis i ->
+                           if Option.is_none !spec then
+                             spec := Some (index, id_to_str i)
+                           else
+                             failwith
+                               "Unsupported multi-argument specialization"
+                       | _ -> ()
+                     )
+                     args
+               | P_aux (P_id i, _) when is_member_of_enum state.analysis i ->
+                   if Option.is_none !spec then spec := Some (idx, id_to_str i)
+                   else failwith "Unsupported multi-argument specialization"
+               | _ -> ()
+           );
+        !spec
+    | _ -> None
+  in
   let fun_name = id_to_str_noexn fun_id in
   let (Pat_aux (pat, _)) = func in
   let args, body =
@@ -283,18 +310,23 @@ let infer_registers state _ fun_id func =
       infer_register_files state.regidx_functions_registery
         state.op_info.registers_info regidx_names body ~rootcall:true
     in
-    Hashtbl.iter
-      (fun name (regfile, regaccess) ->
-        let case_operands_info =
-          if Hashtbl.mem state.op_info.registers_info case_name then
-            Hashtbl.find state.op_info.registers_info case_name
-          else []
-        in
-        let index = Hashtbl.find bound_args name in
-        let new_info = Reg (index, regfile, regaccess) :: case_operands_info in
-        Hashtbl.replace state.op_info.registers_info case_name new_info
-      )
-      regs
+    let operands_info = ref [] in
+    regs
+    |> Hashtbl.iter (fun name (regfile, regaccess) ->
+           let index = Hashtbl.find bound_args name in
+           operands_info := Reg (index, regfile, regaccess) :: !operands_info
+       );
+    let case_info =
+      if Hashtbl.mem state.op_info.registers_info case_name then
+        Hashtbl.find state.op_info.registers_info case_name
+      else []
+    in
+    let new_case_info =
+      match get_specialization args with
+      | None -> (None, !operands_info) :: case_info
+      | specialization -> (specialization, !operands_info) :: case_info
+    in
+    Hashtbl.replace state.op_info.registers_info case_name new_case_info
   )
 let add_regidx_function state _ id _ typ =
   let (Typ_aux (t, _)) = typ in
@@ -355,6 +387,21 @@ let infer_immediate_in_pattern p args =
   | _ -> None
 
 let infer_immediates state _ id _ left right =
+  let get_specialization args =
+    let specs =
+      args
+      |> List.mapi (fun i a -> (i, a))
+      |> List.filter_map (fun (idx, a) ->
+             match a with
+             | MP_aux (MP_id i, _) when is_member_of_enum state.analysis i ->
+                 Some (idx, id_to_str i)
+             | _ -> None
+         )
+    in
+    assert_empty_or_length1_or_failwith specs
+      "Unsupported muti-argument specialization";
+    get_sole_element_or_none specs
+  in
   if id_to_str id = "assembly" then (
     match left with
     | MPat_aux (MPat_pat pl, _) | MPat_aux (MPat_when (pl, _), _) -> (
@@ -369,9 +416,25 @@ let infer_immediates state _ id _ left right =
                         (fun p -> infer_immediate_in_pattern p args)
                         patterns
                     in
-                    let imms = List.map (fun index -> Imm index) imm_indices in
-                    Hashtbl.add state.op_info.immediates_info
-                      (id_to_str case_id) imms
+                    if List.length imm_indices <> 0 then (
+                      let imms =
+                        List.map (fun index -> Imm index) imm_indices
+                      in
+                      let case_name = id_to_str case_id in
+                      let case_info =
+                        if Hashtbl.mem state.op_info.immediates_info case_name
+                        then
+                          Hashtbl.find state.op_info.immediates_info case_name
+                        else []
+                      in
+                      let new_case_info =
+                        match get_specialization args with
+                        | None -> (None, imms) :: case_info
+                        | specialization -> (specialization, imms) :: case_info
+                      in
+                      Hashtbl.replace state.op_info.immediates_info case_name
+                        new_case_info
+                    )
                 | _ -> ()
               )
           )

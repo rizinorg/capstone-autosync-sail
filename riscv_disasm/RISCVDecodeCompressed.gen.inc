@@ -3,7 +3,7 @@
 /* (see https://github.com/rizinorg/capstone-autosync-sail)*/
 /* from the sail model of RISC-V*/
 /* (see https://github.com/riscv/sail-riscv) @ version
- * 8a75b297b116a1ffd8c62e98a7f43e2d93761d15.*/
+ * 9fe13b6cfff3e3894057e444868743b3df1b9076.*/
 /* DO NOT MODIFY THIS CODE MANUALLY. ANY MANUAL EDITS ARE OVERWRITTEN.*/
 /* ------------------------------------------------------------------- */
 /* Copyright © 2024-2025 moste00 <ubermenchun@gmail.com>*/
@@ -135,7 +135,8 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
     uint64_t rsd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t nzi5 = SLICE_BITVEC(binary_stream, 12, 12);
     if ((!(((nzi40 << 1) | nzi5) == 0x00)) &&
-        ((!(rsd == ctx->zreg)) && (extensionEnabled(RISCV_Ext_Zca, ctx)))) {
+        ((neq_anything(rsd, zreg, ctx)) &&
+         (extensionEnabled(RISCV_Ext_Zca, ctx)))) {
       tree->ast_node_type = RISCV_C_ADDI;
       tree->ast_node.c_addi.nzi = (nzi5 << 5) | nzi40;
       tree->ast_node.c_addi.rsd = rsd;
@@ -170,7 +171,7 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
     uint64_t imm40 = SLICE_BITVEC(binary_stream, 2, 6);
     uint64_t rsd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t imm5 = SLICE_BITVEC(binary_stream, 12, 12);
-    if ((!(rsd == ctx->zreg)) &&
+    if ((neq_anything(rsd, zreg, ctx)) &&
         ((ctx->xlen == 64) && (extensionEnabled(RISCV_Ext_Zca, ctx)))) {
       tree->ast_node_type = RISCV_C_ADDIW;
       tree->ast_node.c_addiw.imm = (imm5 << 5) | imm40;
@@ -186,7 +187,8 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
     uint64_t imm40 = SLICE_BITVEC(binary_stream, 2, 6);
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t imm5 = SLICE_BITVEC(binary_stream, 12, 12);
-    if ((!(rd == ctx->zreg)) && (extensionEnabled(RISCV_Ext_Zca, ctx))) {
+    if ((neq_anything(rd, zreg, ctx)) &&
+        (extensionEnabled(RISCV_Ext_Zca, ctx))) {
       tree->ast_node_type = RISCV_C_LI;
       tree->ast_node.c_li.imm = (imm5 << 5) | imm40;
       tree->ast_node.c_li.rd = rd;
@@ -221,9 +223,10 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
     uint64_t imm1612 = SLICE_BITVEC(binary_stream, 2, 6);
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t imm17 = SLICE_BITVEC(binary_stream, 12, 12);
-    if ((!(rd == ctx->zreg)) &&
-        ((!(rd == ctx->sp)) && ((!(((imm1612 << 1) | imm17) == 0x00)) &&
-                                (extensionEnabled(RISCV_Ext_Zca, ctx))))) {
+    if ((neq_anything(rd, zreg, ctx)) &&
+        ((neq_anything(rd, sp, ctx)) &&
+         ((!(((imm1612 << 1) | imm17) == 0x00)) &&
+          (extensionEnabled(RISCV_Ext_Zca, ctx))))) {
       tree->ast_node_type = RISCV_C_LUI;
       tree->ast_node.c_lui.imm = (imm17 << 5) | imm1612;
       tree->ast_node.c_lui.rd = rd;
@@ -451,8 +454,9 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
     uint64_t rsd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t nzui5 = SLICE_BITVEC(binary_stream, 12, 12);
     if ((!(((nzui40 << 1) | nzui5) == 0x00)) &&
-        ((!(rsd == ctx->zreg)) && (((ctx->xlen == 64) || (nzui5 == 0x0)) &&
-                                   (extensionEnabled(RISCV_Ext_Zca, ctx))))) {
+        ((neq_anything(rsd, zreg, ctx)) &&
+         (((ctx->xlen == 64) || (nzui5 == 0x0)) &&
+          (extensionEnabled(RISCV_Ext_Zca, ctx))))) {
       tree->ast_node_type = RISCV_C_SLLI;
       tree->ast_node.c_slli.shamt = (nzui5 << 5) | nzui40;
       tree->ast_node.c_slli.rsd = rsd;
@@ -468,7 +472,8 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
     uint64_t ui42 = SLICE_BITVEC(binary_stream, 4, 6);
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t ui5 = SLICE_BITVEC(binary_stream, 12, 12);
-    if ((!(rd == ctx->zreg)) && (extensionEnabled(RISCV_Ext_Zca, ctx))) {
+    if ((neq_anything(rd, zreg, ctx)) &&
+        (extensionEnabled(RISCV_Ext_Zca, ctx))) {
       tree->ast_node_type = RISCV_C_LWSP;
       tree->ast_node.c_lwsp.uimm = (ui76 << 4) | (ui5 << 3) | ui42;
       tree->ast_node.c_lwsp.rd = rd;
@@ -484,7 +489,7 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
     uint64_t ui43 = SLICE_BITVEC(binary_stream, 5, 6);
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t ui5 = SLICE_BITVEC(binary_stream, 12, 12);
-    if ((!(rd == ctx->zreg)) &&
+    if ((neq_anything(rd, zreg, ctx)) &&
         ((ctx->xlen == 64) && (extensionEnabled(RISCV_Ext_Zca, ctx)))) {
       tree->ast_node_type = RISCV_C_LDSP;
       tree->ast_node.c_ldsp.uimm = (ui86 << 3) | (ui5 << 2) | ui43;
@@ -530,7 +535,8 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
       SLICE_BITVEC(binary_stream, 12, 12) == 0x0 &&
       SLICE_BITVEC(binary_stream, 13, 15) == 0x4) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 7, 11);
-    if ((!(rs1 == ctx->zreg)) && (extensionEnabled(RISCV_Ext_Zca, ctx))) {
+    if ((neq_anything(rs1, zreg, ctx)) &&
+        (extensionEnabled(RISCV_Ext_Zca, ctx))) {
       tree->ast_node_type = RISCV_C_JR;
       tree->ast_node.c_jr = rs1;
       return;
@@ -544,7 +550,8 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
       SLICE_BITVEC(binary_stream, 12, 12) == 0x1 &&
       SLICE_BITVEC(binary_stream, 13, 15) == 0x4) {
     uint64_t rs1 = SLICE_BITVEC(binary_stream, 7, 11);
-    if ((!(rs1 == ctx->zreg)) && (extensionEnabled(RISCV_Ext_Zca, ctx))) {
+    if ((neq_anything(rs1, zreg, ctx)) &&
+        (extensionEnabled(RISCV_Ext_Zca, ctx))) {
       tree->ast_node_type = RISCV_C_JALR;
       tree->ast_node.c_jalr = rs1;
       return;
@@ -558,8 +565,9 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
       SLICE_BITVEC(binary_stream, 13, 15) == 0x4) {
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 2, 6);
     uint64_t rd = SLICE_BITVEC(binary_stream, 7, 11);
-    if ((!(rd == ctx->zreg)) &&
-        ((!(rs2 == ctx->zreg)) && (extensionEnabled(RISCV_Ext_Zca, ctx)))) {
+    if ((neq_anything(rd, zreg, ctx)) &&
+        ((neq_anything(rs2, zreg, ctx)) &&
+         (extensionEnabled(RISCV_Ext_Zca, ctx)))) {
       tree->ast_node_type = RISCV_C_MV;
       tree->ast_node.c_mv.rd = rd;
       tree->ast_node.c_mv.rs2 = rs2;
@@ -588,8 +596,9 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
       SLICE_BITVEC(binary_stream, 13, 15) == 0x4) {
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 2, 6);
     uint64_t rsd = SLICE_BITVEC(binary_stream, 7, 11);
-    if ((!(rsd == ctx->zreg)) &&
-        ((!(rs2 == ctx->zreg)) && (extensionEnabled(RISCV_Ext_Zca, ctx)))) {
+    if ((neq_anything(rsd, zreg, ctx)) &&
+        ((neq_anything(rs2, zreg, ctx)) &&
+         (extensionEnabled(RISCV_Ext_Zca, ctx)))) {
       tree->ast_node_type = RISCV_C_ADD;
       tree->ast_node.c_add.rsd = rsd;
       tree->ast_node.c_add.rs2 = rs2;
@@ -618,7 +627,7 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
       SLICE_BITVEC(binary_stream, 12, 12) == 0x0 &&
       SLICE_BITVEC(binary_stream, 13, 15) == 0x0) {
     uint64_t rsd = SLICE_BITVEC(binary_stream, 7, 11);
-    if (!(rsd == ctx->zreg)) {
+    if (neq_anything(rsd, zreg, ctx)) {
       tree->ast_node_type = RISCV_C_ADDI_HINT;
       tree->ast_node.c_addi_hint = rsd;
       return;
@@ -658,7 +667,7 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
       SLICE_BITVEC(binary_stream, 12, 12) == 0x0 &&
       SLICE_BITVEC(binary_stream, 13, 15) == 0x4) {
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 2, 6);
-    if (!(rs2 == ctx->zreg)) {
+    if (neq_anything(rs2, zreg, ctx)) {
       tree->ast_node_type = RISCV_C_MV_HINT;
       tree->ast_node.c_mv_hint = rs2;
       return;
@@ -672,7 +681,7 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
       SLICE_BITVEC(binary_stream, 12, 12) == 0x1 &&
       SLICE_BITVEC(binary_stream, 13, 15) == 0x4) {
     uint64_t rs2 = SLICE_BITVEC(binary_stream, 2, 6);
-    if (!(rs2 == ctx->zreg)) {
+    if (neq_anything(rs2, zreg, ctx)) {
       tree->ast_node_type = RISCV_C_ADD_HINT;
       tree->ast_node.c_add_hint = rs2;
       return;
@@ -686,7 +695,7 @@ static void decode_compressed(struct ast *tree, uint64_t binary_stream,
     uint64_t nzui40 = SLICE_BITVEC(binary_stream, 2, 6);
     uint64_t rsd = SLICE_BITVEC(binary_stream, 7, 11);
     uint64_t nzui5 = SLICE_BITVEC(binary_stream, 12, 12);
-    if (((((nzui40 << 1) | nzui5) == 0x00) || (rsd == ctx->zreg)) &&
+    if (((((nzui40 << 1) | nzui5) == 0x00) || (eq_anything(rsd, zreg, ctx))) &&
         ((ctx->xlen == 64) || (nzui5 == 0x0))) {
       tree->ast_node_type = RISCV_C_SLLI_HINT;
       tree->ast_node.c_slli_hint.shamt = (nzui5 << 5) | nzui40;

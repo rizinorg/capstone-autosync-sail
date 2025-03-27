@@ -135,7 +135,7 @@ let create_conditions_from_pat state p arg_bindings =
               let const = bitv_literal_to_str lit in
               let size = bitv_literal_size lit in
               Assert (size, const)
-          | MP_app (id, args) -> (
+          | MP_app (id, args) ->
               let mapping_name = id_to_str id in
               let arg_name =
                 match args with
@@ -145,29 +145,36 @@ let create_conditions_from_pat state p arg_bindings =
                       "Unsupported mapping pattern, multiple arguments are not \
                        supported"
               in
-              let bv_to_enum =
-                get_bv2enum_mapping state.analysis mapping_name
-              in
-              match bv_to_enum with
-              | Some bv2enum ->
-                  let maybe_size = Hashtbl.find arg_bindings arg_name in
-                  let size = get_some_or_failwith maybe_size "UNREACHABLE" in
-                  Map_bind (size, bv2enum, arg_name)
-              | None -> (
-                  match get_bv2struct_mapping state.analysis mapping_name with
-                  | Some (struct_name, bv_to_struct) ->
-                      let maybe_size = Hashtbl.find arg_bindings arg_name in
-                      let size =
-                        get_some_or_failwith maybe_size "UNREACHABLE"
-                      in
-                      Struct_map_bind (size, struct_name, bv_to_struct, arg_name)
-                  | None ->
-                      failwith
-                        ("Mapping " ^ mapping_name
-                       ^ " is neither a bv<->enum nor a bv<->struct mapping"
-                        )
-                )
-            )
+              if
+                List.mem mapping_name
+                  ["encdec_reg"; "encdec_freg"; "encdec_vreg"]
+              then Bind (5, arg_name)
+              else if mapping_name = "encdec_creg" then Bind (3, arg_name) 
+              else (
+                let bv_to_enum =
+                  get_bv2enum_mapping state.analysis mapping_name
+                in
+                match bv_to_enum with
+                | Some bv2enum ->
+                    let maybe_size = Hashtbl.find arg_bindings arg_name in
+                    let size = get_some_or_failwith maybe_size "UNREACHABLE" in
+                    Map_bind (size, bv2enum, arg_name)
+                | None -> (
+                    match get_bv2struct_mapping state.analysis mapping_name with
+                    | Some (struct_name, bv_to_struct) ->
+                        let maybe_size = Hashtbl.find arg_bindings arg_name in
+                        let size =
+                          get_some_or_failwith maybe_size "UNREACHABLE"
+                        in
+                        Struct_map_bind
+                          (size, struct_name, bv_to_struct, arg_name)
+                    | None ->
+                        failwith
+                          ("Mapping " ^ mapping_name
+                         ^ " is neither a bv<->enum nor a bv<->struct mapping"
+                          )
+                  )
+              )
           | _ ->
               failwith
                 ("Unsupported decode condition @ "

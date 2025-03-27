@@ -19,7 +19,7 @@
  (name capstone-autosync-sail)
  (synopsis "A tool that generates a capstone disassembler module for RISC-V ISA from the Sail ISA description for RISC-V")
  (description "The tool depends on the Sail ISA description language compiler (which is an Ocaml library) to ingest the Sail model of RISC-V and generate a Capstone-compliant disassembler")
- (depends ocaml dune (libsail (= 0.18)))
+ (depends ocaml dune (libsail (= 0.19)))
  (tags
   (RISCV Disassembly Assembly Capstone "Reverse-Engineering" Rizin Sail ISA)))
 

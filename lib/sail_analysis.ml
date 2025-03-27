@@ -172,13 +172,16 @@ let is_struct_bitv_mapping env mapping_type_annotation =
   )
 
 let collect_enum_bitv_mappings state _ id typ_annot clauses =
-  match is_enum_bitv_mapping state.sail_env.enums typ_annot with
-  | Some (enum_name, bitv_size) ->
-      Hashtbl.add state.mapping_ctx.enum_bitv_mappings_registery (id_to_str id)
-        (mk_bitv2enum clauses);
-      Hashtbl.add state.type_ctx.bitv_synonyms enum_name (Convertible, bitv_size)
-  | _ -> ()
-
+  if List.mem (id_to_str id) ["encdec_cbie"] then ()
+  else (
+    match is_enum_bitv_mapping state.sail_env.enums typ_annot with
+    | Some (enum_name, bitv_size) ->
+        Hashtbl.add state.mapping_ctx.enum_bitv_mappings_registery
+          (id_to_str id) (mk_bitv2enum clauses);
+        Hashtbl.add state.type_ctx.bitv_synonyms enum_name
+          (Convertible, bitv_size)
+    | _ -> ()
+  )
 let collect_struct_bitv_mappings state _ id typ_annot clauses =
   match is_struct_bitv_mapping state.sail_env.e typ_annot with
   | Some (struct_name, bitv_size) ->

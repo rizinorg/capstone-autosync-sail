@@ -12,6 +12,7 @@ open Ccodegen_clike_typedef
 open Ccodegen_decode_procedure
 open Ccodegen_stringifier
 open Ccodegen_instr_types
+open Ccodegen_operand_info
 
 open Printexc
 
@@ -94,6 +95,7 @@ let dummyoptions =
   [
     ("-lem_extern_type", Arg.String (fun _ -> ()), "");
     ("-coq_extern_type", Arg.String (fun _ -> ()), "");
+    ("-lean_extern_type", Arg.String (fun _ -> ()), "");
   ]
 
 let _, ast, types, side_effects =
@@ -128,8 +130,9 @@ let instr_types = Gen_instr_types.gen_instr_types analysis gen_instr_types_conf
 
 let instr_types_str, instr_types_mapping_str =
   instr_types_to_c instr_types typdefwalker
-
-let _ = Gen_operand_info.gen_operand_info ast analysis
+(* 
+let info = Gen_operand_info.gen_operand_info ast analysis
+let info_str = operand_info_to_c info typdefwalker *)
 
 let () = write_c_file ast_type_filename ctypedefs_str
 let () =
@@ -145,15 +148,20 @@ let () =
         ast_type_filename;
         ast2str_tables_filename;
         "RISCVAst2StrHelpers.h";
-        "SStream.h";
+        "../../SStream.h";
       ]
 
 let () =
   write_c_file ast2str_tables_filename tables_str
-    ~additional_includes:[ast_type_filename; "SStream.h"]
+    ~additional_includes:[ast_type_filename; "../../SStream.h"]
 
 let () = write_c_file instr_types_filename instr_types_str
 
 let () =
   write_c_file instr_types_mapping_filename instr_types_mapping_str
     ~additional_includes:[instr_types_filename]
+
+(* let () =
+  write_c_file operands_filename info_str
+    ~additional_includes:
+      [ast_type_filename; "../../include/capstone/capstone.h"] *)
