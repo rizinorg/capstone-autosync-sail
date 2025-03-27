@@ -114,7 +114,9 @@ let gen_c_mapbind (start_offset, condition) =
         ^ string_of_int start_offset ^ " , " ^ string_of_int end_offset
         ^ ")) { "
       in
-      let c_cases = ref [] in
+      let c_cases = ref [
+        "default: break;";
+      ] in
       Hashtbl.iter
         (fun bval enumval ->
           let c_case =
@@ -140,7 +142,9 @@ let gen_c_mapbind (start_offset, condition) =
         ^ string_of_int start_offset ^ " , " ^ string_of_int end_offset
         ^ ")) { "
       in
-      let c_cases = ref [] in
+      let c_cases = ref [
+        "default: break;";
+      ] in
       Hashtbl.iter
         (fun bval kv_pairs ->
           let member_assignments =
