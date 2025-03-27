@@ -101,27 +101,6 @@ git reset --hard $(cat sail.hash.txt)
 Finally, run the following command from the generator’s directory to obtain the generated C code:
 
 ```bash
-source ~/.bash_profile && dune exec --profile release -- riscv_disasm_from_sail -f conf/sail-files-paths.txt
+dune build --profile release
+./_build/default/bin/main.exe  -f conf/sail-riscv-0.6.txt
 ```
-
-## 5- Or just copy riscv_disasm
-
-The outputs of the generator for the model version specified by sail.hash.txt is also kept in this repo, this is a quality-of-life feature for 2 reasons: 
-
-1- If a commit to `capstone-autosync-sail` changed the generated code, the diff to the generated code is accompanied by the diff to the generator’s logic as an explanation 
-
-2- Users can simply copy the generated code instead of going through steps 1..4 above
-
-As a downside, if the generated C code is used elsewhere, such as in a RISCV module in https://github.com/capstone-engine/capstone disassembler framework (the primary purpose and raison d'être of this tool), this means that the handwritten code in riscv_disasm (all the files not having “.gen” in their names) MUST NOT be modified in that site of use, only here in this repo.
-
-# Updating the input model version
-
-To update the version of sail-riscv, you have to update conf/sail-files-paths.txt and conf/hash.txt. To update the first, run :
-
-```bash
-tools/riscv-ls.sh <path-to-riscv-model>
-```
-
-This will (ab)use the makefile in the sail-riscv repo to print an ordered list of all files that comprise the model. This is also what should be done if the sail-riscv directory downloaded happens to not be the direct filesystem-sibling of the capstone-autosync-sail directory, as the paths in the committed conf/sail-files-paths.txt assume this relationship. You can override the committed capstone-autosync-sail paths by running the above command on any valid path to the sail-riscv model directory. (Please don't commit the resulting conf/sail-files.paths.txt)
-
-Updating the hash must be done manually as of now, query the sail-riscv repo version (e.g. using git log) and paste the version in sail.hash.txt.
