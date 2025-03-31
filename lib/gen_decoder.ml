@@ -149,7 +149,7 @@ let create_conditions_from_pat state p arg_bindings =
                 List.mem mapping_name
                   ["encdec_reg"; "encdec_freg"; "encdec_vreg"]
               then Bind (5, arg_name)
-              else if mapping_name = "encdec_creg" then Bind (3, arg_name) 
+              else if mapping_name = "encdec_creg" then Bind (3, arg_name)
               else (
                 let bv_to_enum =
                   get_bv2enum_mapping state.analysis mapping_name

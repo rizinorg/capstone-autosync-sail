@@ -61,6 +61,15 @@ let strip_prefix_if_exists prefix str =
     String.sub str plen (len - plen)
   )
 
+let str_ends_with suffix str =
+  let sfxlen = String.length suffix in
+  let slen = String.length str in
+  if sfxlen > slen then false
+  else (
+    let str_suffix = String.sub str (slen - sfxlen) sfxlen in
+    str_suffix = suffix
+  )
+
 let get_some_or_failwith opt msg =
   match opt with Some thing -> thing | None -> failwith msg
 
