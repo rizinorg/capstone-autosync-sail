@@ -88,7 +88,10 @@ type consequence_head = Assign_node_type of string
 type consequence_item = Push of value | Concat_push of value list
 type consequences = consequence_head * consequence_item list
 
-type int_operand = Id_or_funcall of string * string list | Number of int
+type int_operand =
+  | Ident of string
+  | Funcall of string * string list
+  | Number of int
 type bv_operand = Bv_concat of string list | Bv_id of string
 type guard =
   | Eq_int of int_operand * int_operand

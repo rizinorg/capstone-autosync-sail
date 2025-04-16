@@ -164,4 +164,8 @@ let () =
 let () =
   write_c_file operands_filename info_str
     ~additional_includes:
-      [ast_type_filename; "../../include/capstone/capstone.h"]
+      [
+        ast_type_filename;
+        "../../include/capstone/capstone.h";
+        "RISCVOperandsHelpers.h";
+      ]

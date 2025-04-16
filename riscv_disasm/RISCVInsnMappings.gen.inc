@@ -3,7 +3,7 @@
 /* (see https://github.com/rizinorg/capstone-autosync-sail)*/
 /* from the sail model of RISC-V*/
 /* (see https://github.com/riscv/sail-riscv) @ version
- * 9fe13b6cfff3e3894057e444868743b3df1b9076.*/
+ * dc1155266a1cb6ba2342162601739881b58a1c4e.*/
 /* DO NOT MODIFY THIS CODE MANUALLY. ANY MANUAL EDITS ARE OVERWRITTEN.*/
 /* ------------------------------------------------------------------- */
 /* Copyright © 2024-2025 moste00 <ubermenchun@gmail.com>*/
@@ -18,7 +18,7 @@
 
 #include "RISCVInsn.gen.inc"
 
-static const uint16_t to_insn[323][21] = {
+static const uint16_t to_insn[334][21] = {
     [RISCV_REV8] = {RISCV_INSN_REV8},
     [RISCV_WXTYPE] = {RISCV_INSN_WX_VSUBU, RISCV_INSN_WX_VSUB,
                       RISCV_INSN_WX_VADDU, RISCV_INSN_WX_VADD},
@@ -61,6 +61,7 @@ static const uint16_t to_insn[323][21] = {
     [RISCV_F_UN_X_TYPE_D] = {RISCV_INSN_FMV_X_D, RISCV_INSN_FCLASS_D},
     [RISCV_C_FSWSP] = {RISCV_INSN_C_FSWSP},
     [RISCV_VMVXS] = {RISCV_INSN_VMVXS},
+    [RISCV_ZVKSHA2TYPE] = {RISCV_INSN_ZVK_VSHA2CL, RISCV_INSN_ZVK_VSHA2CH},
     [RISCV_C_FLD] = {RISCV_INSN_C_FLD},
     [RISCV_SHIFTIWOP] = {RISCV_INSN_SRLIW, RISCV_INSN_SRAIW, RISCV_INSN_SLLIW},
     [RISCV_UNZIP] = {RISCV_INSN_UNZIP},
@@ -129,6 +130,7 @@ static const uint16_t to_insn[323][21] = {
     [RISCV_CTZ] = {RISCV_INSN_CTZ},
     [RISCV_FMVH_X_D] = {RISCV_INSN_FMVH_X_D},
     [RISCV_SLLIUW] = {RISCV_INSN_SLLIUW},
+    [RISCV_ZCMOP] = {RISCV_INSN_ZCMOP},
     [RISCV_FMINM_S] = {RISCV_INSN_FMINM_S},
     [RISCV_ZBA_RTYPEUW] = {RISCV_INSN_SH3ADDUW, RISCV_INSN_SH2ADDUW,
                            RISCV_INSN_SH1ADDUW, RISCV_INSN_ADDUW},
@@ -158,6 +160,7 @@ static const uint16_t to_insn[323][21] = {
     [RISCV_XPERM8] = {RISCV_INSN_XPERM8},
     [RISCV_ITYPE] = {RISCV_INSN_XORI, RISCV_INSN_SLTIU, RISCV_INSN_SLTI,
                      RISCV_INSN_ORI, RISCV_INSN_ANDI, RISCV_INSN_ADDI},
+    [RISCV_VCLMUL_VV] = {RISCV_INSN_VCLMUL_VV},
     [RISCV_F_UN_F_TYPE_H] = {RISCV_INSN_FMV_H_X},
     [RISCV_VCLZ_V] = {RISCV_INSN_VCLZ_V},
     [RISCV_VID_V] = {RISCV_INSN_VID_V},
@@ -167,6 +170,7 @@ static const uint16_t to_insn[323][21] = {
     [RISCV_VBREV8_V] = {RISCV_INSN_VBREV8_V},
     [RISCV_VSSEGTYPE] = {RISCV_INSN_VSSEGTYPE},
     [RISCV_ZICOND_RTYPE] = {RISCV_INSN_CZERO_NEZ, RISCV_INSN_CZERO_EQZ},
+    [RISCV_VCLMULH_VX] = {RISCV_INSN_VCLMULH_VX},
     [RISCV_C_FSDSP] = {RISCV_INSN_C_FSDSP},
     [RISCV_SRET] = {RISCV_INSN_SRET},
     [RISCV_STORE_FP] = {RISCV_INSN_STORE_FP},
@@ -203,6 +207,7 @@ static const uint16_t to_insn[323][21] = {
     [RISCV_SHA512SIG1L] = {RISCV_INSN_SHA512SIG1L},
     [RISCV_VLSEGTYPE] = {RISCV_INSN_VLSEGTYPE},
     [RISCV_SHA256SIG0] = {RISCV_INSN_SHA256SIG0},
+    [RISCV_ZIMOP_MOP_RR] = {RISCV_INSN_ZIMOP_MOP_RR},
     [RISCV_C_ADDI4SPN] = {RISCV_INSN_C_ADDI4SPN},
     [RISCV_VVTYPE] = {RISCV_INSN_VV_VXOR,         RISCV_INSN_VV_VSUB,
                       RISCV_INSN_VV_VSSUBU,       RISCV_INSN_VV_VSSUB,
@@ -215,6 +220,7 @@ static const uint16_t to_insn[323][21] = {
                       RISCV_INSN_VV_VMIN,         RISCV_INSN_VV_VMAXU,
                       RISCV_INSN_VV_VMAX,         RISCV_INSN_VV_VAND,
                       RISCV_INSN_VV_VADD},
+    [RISCV_VSHA2MS_VV] = {RISCV_INSN_VSHA2MS_VV},
     [RISCV_FLEQ_H] = {RISCV_INSN_FLEQ_H},
     [RISCV_VICMPTYPE] = {RISCV_INSN_VICMP_VMSNE, RISCV_INSN_VICMP_VMSLEU,
                          RISCV_INSN_VICMP_VMSLE, RISCV_INSN_VICMP_VMSGTU,
@@ -281,6 +287,7 @@ static const uint16_t to_insn[323][21] = {
                                  RISCV_INSN_FCVT_L_H, RISCV_INSN_FCVT_LU_H},
     [RISCV_VISG] = {RISCV_INSN_VI_VSLIDEUP, RISCV_INSN_VI_VSLIDEDOWN,
                     RISCV_INSN_VI_VRGATHER},
+    [RISCV_VCLMUL_VX] = {RISCV_INSN_VCLMUL_VX},
     [RISCV_C_ADD] = {RISCV_INSN_C_ADD},
     [RISCV_FVFTYPE] = {RISCV_INSN_VF_VSUB, RISCV_INSN_VF_VSLIDE1UP,
                        RISCV_INSN_VF_VSLIDE1DOWN, RISCV_INSN_VF_VSGNJX,
@@ -309,6 +316,7 @@ static const uint16_t to_insn[323][21] = {
     [RISCV_VIMCTYPE] = {RISCV_INSN_VIMC_VMADC},
     [RISCV_VIMSTYPE] = {RISCV_INSN_VIMS_VADC},
     [RISCV_MASKTYPEV] = {RISCV_INSN_MASKTYPEV},
+    [RISCV_THREAD_START] = {RISCV_INSN_THREAD_START},
     [RISCV_FVFMTYPE] = {RISCV_INSN_VFM_VMFNE, RISCV_INSN_VFM_VMFLT,
                         RISCV_INSN_VFM_VMFLE, RISCV_INSN_VFM_VMFGT,
                         RISCV_INSN_VFM_VMFGE, RISCV_INSN_VFM_VMFEQ},
@@ -330,6 +338,7 @@ static const uint16_t to_insn[323][21] = {
     [RISCV_FROUND_H] = {RISCV_INSN_FROUND_H},
     [RISCV_C_JAL] = {RISCV_INSN_C_JAL},
     [RISCV_SFENCE_VMA] = {RISCV_INSN_SFENCE_VMA},
+    [RISCV_STOP_FETCHING] = {RISCV_INSN_STOP_FETCHING},
     [RISCV_NVSTYPE] = {RISCV_INSN_NVS_VNSRL, RISCV_INSN_NVS_VNSRA},
     [RISCV_FROUND_S] = {RISCV_INSN_FROUND_S},
     [RISCV_NISTYPE] = {RISCV_INSN_NIS_VNSRL, RISCV_INSN_NIS_VNSRA},
@@ -392,6 +401,7 @@ static const uint16_t to_insn[323][21] = {
     [RISCV_ZBS_IOP] = {RISCV_INSN_BSETI, RISCV_INSN_BINVI, RISCV_INSN_BEXTI,
                        RISCV_INSN_BCLRI},
     [RISCV_C_XOR] = {RISCV_INSN_C_XOR},
+    [RISCV_ZIMOP_MOP_R] = {RISCV_INSN_ZIMOP_MOP_R},
     [RISCV_FMINM_H] = {RISCV_INSN_FMINM_H},
     [RISCV_C_LUI_HINT] = {RISCV_INSN_C_LUI_HINT},
     [RISCV_VVMCTYPE] = {RISCV_INSN_VVMC_VMSBC, RISCV_INSN_VVMC_VMADC},
@@ -465,6 +475,7 @@ static const uint16_t to_insn[323][21] = {
     [RISCV_ILLEGAL] = {RISCV_INSN_ILLEGAL},
     [RISCV_VREV8_V] = {RISCV_INSN_VREV8_V},
     [RISCV_BREV8] = {RISCV_INSN_BREV8},
+    [RISCV_VCLMULH_VV] = {RISCV_INSN_VCLMULH_VV},
     [RISCV_AES32DSMI] = {RISCV_INSN_AES32DSMI},
     [RISCV_VANDN_VV] = {RISCV_INSN_VANDN_VV},
     [RISCV_C_FSD] = {RISCV_INSN_C_FSD},
@@ -502,6 +513,8 @@ uint16_t get_insn_type(struct ast *tree) {
                   [tree->ast_node.f_un_rm_fx_type_s.fcvt_lu_s];
   case RISCV_F_UN_X_TYPE_D:
     return to_insn[RISCV_F_UN_X_TYPE_D][tree->ast_node.f_un_x_type_d.fmv_x_d];
+  case RISCV_ZVKSHA2TYPE:
+    return to_insn[RISCV_ZVKSHA2TYPE][tree->ast_node.zvksha2type.funct6];
   case RISCV_SHIFTIWOP:
     return to_insn[RISCV_SHIFTIWOP][tree->ast_node.shiftiwop.op];
   case RISCV_ZICBOM:

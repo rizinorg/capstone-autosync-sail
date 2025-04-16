@@ -122,7 +122,7 @@ let tostr_logic_to_c ({ walker; _ } as str_state) i tostr =
   | Intrinsic_tostr_logic (name, args) ->
       let sep = if List.length args != 0 then "," else "" in
       let args = List.map (intrinsic_logic_arg_to_c walker) args in
-      (name ^ "(" ^ String.concat ", " args ^ sep ^ "ss, conf);", "")
+      (name ^ "(" ^ String.concat ", " args ^ sep ^ "ss, ctx);", "")
 
 let subcase_body_to_c ({ walker; _ } as str_state) body =
   let tostrs_and_tables = List.mapi (tostr_logic_to_c str_state) body in
@@ -161,7 +161,7 @@ let assembler_clause_to_c ({ walker; _ } as str_state) (case_name, subcases) =
 let assembler_to_c asm walker =
   let procedure_start =
     "static void ast2str(struct " ^ ast_sail_def_name ^ " *" ^ ast_c_parameter
-    ^ ", SStream *ss, RVContext *conf) { " ^ "switch (" ^ ast_c_parameter ^ "->"
+    ^ ", SStream *ss, RVContext *ctx) { " ^ "switch (" ^ ast_c_parameter ^ "->"
     ^ ast_sail_def_name ^ generated_ast_enum_suffix ^ ") {"
   in
   let procedure_end = "}}" in

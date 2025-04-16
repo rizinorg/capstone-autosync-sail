@@ -1,13 +1,14 @@
 ../sail-riscv/model/prelude.sail
 ../sail-riscv/model/riscv_errors.sail
-../sail-riscv/model/riscv_xlen32.sail
+../sail-riscv/model/riscv_xlen64.sail
 ../sail-riscv/model/riscv_xlen.sail
-../sail-riscv/model/riscv_flen_F.sail
+../sail-riscv/model/riscv_flen_D.sail
 ../sail-riscv/model/riscv_flen.sail
 ../sail-riscv/model/riscv_vlen.sail
 ../sail-riscv/model/prelude_mem_addrtype.sail
 ../sail-riscv/model/prelude_mem_metadata.sail
 ../sail-riscv/model/prelude_mem.sail
+../sail-riscv/model/arithmetic.sail
 ../sail-riscv/model/riscv_extensions.sail
 ../sail-riscv/model/riscv_types_common.sail
 ../sail-riscv/model/riscv_types_ext.sail
@@ -46,6 +47,7 @@
 ../sail-riscv/model/riscv_vmem_tlb.sail
 ../sail-riscv/model/riscv_vmem.sail
 ../sail-riscv/model/riscv_types_kext.sail
+../sail-riscv/model/riscv_zvk_utils.sail
 ../sail-riscv/model/riscv_insts_begin.sail
 ../sail-riscv/model/riscv_insts_base.sail
 ../sail-riscv/model/riscv_insts_zifencei.sail
@@ -85,7 +87,12 @@
 ../sail-riscv/model/riscv_insts_zicbom.sail
 ../sail-riscv/model/riscv_insts_zicboz.sail
 ../sail-riscv/model/riscv_insts_zvbb.sail
-../sail-riscv/model/riscv_jalr_seq.sail
+../sail-riscv/model/riscv_insts_zvbc.sail
+../sail-riscv/model/riscv_insts_zvknhab.sail
+../sail-riscv/model/riscv_insts_zimop.sail
+../sail-riscv/model/riscv_insts_zcmop.sail
+../sail-riscv/model/riscv_jalr_rmem.sail
+../sail-riscv/model/riscv_insts_rmem.sail
 ../sail-riscv/model/riscv_insts_end.sail
 ../sail-riscv/model/riscv_csr_end.sail
 ../sail-riscv/model/riscv_step_common.sail
@@ -93,5 +100,4 @@
 ../sail-riscv/model/riscv_decode_ext.sail
 ../sail-riscv/model/riscv_fetch.sail
 ../sail-riscv/model/riscv_step.sail
-../sail-riscv/model/riscv_termination.sail
 ../sail-riscv/model/main.sail

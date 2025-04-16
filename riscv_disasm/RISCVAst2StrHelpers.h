@@ -4,9 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "../../SStream.h"
+#include "../../cs_priv.h"
 #include "RISCVRVContextHelpers.h"
-#include "SStream.h"
-#include "cs_priv.h"
 
 #define RISCV_TEMP_BUFFER_MAX_LEN 32
 
@@ -26,7 +26,6 @@ static inline void hex_bits(uint64_t bitvec, uint8_t bvlen_bits, SStream *ss,
   }
   str_len += 2; // for the '0x' in the beginning
 
-  CS_ASSERT(str_len > 0);
   CS_ASSERT(str_len < 24);
 
   for (uint8_t i = 0; i < bvlen_bits; i += 4) {
@@ -204,4 +203,29 @@ void fence_bits(uint8_t bits, SStream *ss, RVContext *ctx) {
     SStream_concat1(ss, 'w');
   }
 }
+
+void reg_name(uint64_t regidx, SStream *ss, RVContext *ctx) {}
+
+void creg_name(uint64_t regidx, SStream *ss, RVContext *ctx) {}
+
+void freg_name(uint64_t regidx, SStream *ss, RVContext *ctx) {}
+
+void vreg_name(uint64_t regidx, SStream *ss, RVContext *ctx) {}
+
+void ta_flag(uint64_t regidx, SStream *ss, RVContext *ctx) {}
+
+void ma_flag(uint64_t regidx, SStream *ss, RVContext *ctx) {}
+
+void dec_bits(uint8_t regidx, SStream *ss, RVContext *ctx, uint32_t n) {}
+
+#define DEF_DEC_BITS(n)                                                        \
+  void dec_bits_##n(uint8_t regidx, SStream *ss, RVContext *ctx) {             \
+    dec_bits(regidx, ss, ctx, n);                                              \
+  }
+DEF_DEC_BITS(1)
+DEF_DEC_BITS(2)
+DEF_DEC_BITS(3)
+DEF_DEC_BITS(4)
+DEF_DEC_BITS(5)
+
 #endif

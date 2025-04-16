@@ -22,13 +22,17 @@ let single_operand_to_c index operand walker =
       ^ regfile_index_typecaster ^ "(" ^ ast_c_parameter ^ "->"
       ^ Option.get (get_member_path walker idx)
       ^ ");" ^ op_indexing ^ ".access = "
-      ^ (if regacess = Read then "CS_AC_READ" else "CS_AC_WRITE")
+      ^ ( if regacess = Read then "CS_AC_READ"
+          else if regacess == Write then "CS_AC_WRITE"
+          else "CS_AC_READ | CS_AC_WRITE"
+        )
       ^ ";"
   | Right (Imm idx) ->
-      "ops[" ^ string_of_int index ^ "] = { " ^ ".type = RISCV_OP_IMM, .imm = "
+      let op_indexing = "ops[" ^ string_of_int index ^ "]" in
+      op_indexing ^ ".type = RISCV_OP_IMM;" ^ op_indexing ^ " .imm = "
       ^ ast_c_parameter ^ "->"
       ^ Option.get (get_member_path walker idx)
-      ^ ", .access = CS_AC_READ };"
+      ^ ";" ^ op_indexing ^ " .access = CS_AC_READ;"
 
 let operand_lists_to_c reg_ops imm_ops walker =
   let compare_ops op1 op2 =

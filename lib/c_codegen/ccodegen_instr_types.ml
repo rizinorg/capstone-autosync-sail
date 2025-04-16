@@ -4,6 +4,8 @@ open Constants
 open Gen_clike_typedef
 open Utils
 
+open Gen_instr_types
+
 let instr_types_to_c instr_types typedef_walker =
   let enum_def = Buffer.create 10000 in
   let mapping = Buffer.create 10000 in
@@ -27,20 +29,30 @@ let instr_types_to_c instr_types typedef_walker =
 
   let max_num_instr_types = ref 0 in
   Hashtbl.iter
-    (fun case_name (i, types) ->
+    (fun case_name i_types ->
       set_walker_case typedef_walker case_name;
       let case_name = add_prefix_unless_exists identifier_prefix case_name in
       put "\n//--------------------- ";
       put case_name;
       put "--------------------- \n";
 
-      List.iter
-        (fun typename ->
-          put "RISCV_INSN_";
-          put (strip_prefix_if_exists identifier_prefix typename);
-          put ","
-        )
-        types;
+      let i, types, should_define_enum_cases =
+        match i_types with
+        | Types (i, types) -> (i, types, true)
+        | Same_as another_case -> (
+            match Hashtbl.find instr_types another_case with
+            | Types (i, types) -> (i, types, false)
+            | _ -> failwith "UNREACHABLE"
+          )
+      in
+      if should_define_enum_cases then
+        List.iter
+          (fun typename ->
+            put "RISCV_INSN_";
+            put (strip_prefix_if_exists identifier_prefix typename);
+            put ","
+          )
+          types;
       let len = List.length types in
       if len > !max_num_instr_types then max_num_instr_types := len;
 

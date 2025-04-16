@@ -186,7 +186,7 @@ let create_conditions_from_pat state p arg_bindings =
 
 let exp_to_operand (E_aux (e, _)) =
   match e with
-  | E_id varname -> Some (Id_or_funcall (id_to_str varname, []))
+  | E_id varname -> Some (Ident (id_to_str varname))
   | E_lit (L_aux (L_num n, _)) -> Some (Number (Nat_big_num.to_int n))
   | E_app (funname, args) -> (
       try
@@ -194,12 +194,14 @@ let exp_to_operand (E_aux (e, _)) =
           List.map
             (fun (E_aux (a, _)) ->
               match a with
+              | E_lit (L_aux (L_unit, _)) -> ""
               | E_id varname -> id_to_str varname
               | _ -> invalid_arg "Args must be all single identifiers"
             )
             args
         in
-        Some (Id_or_funcall (id_to_str funname, argnames))
+        Some
+          (Funcall (id_to_str funname, List.filter (fun s -> s <> "") argnames))
       with Invalid_argument _ -> None
     )
   | _ -> None
@@ -323,7 +325,7 @@ let rec create_guard (E_aux (e, (l, _))) =
                 )
         )
       (* != *)
-      | "neq_bits" -> (
+      | "neq_bits" | "neq_anything" -> (
           match destructure_exps_to_bitv_operands args with
           | Some (ops, op2) -> Not (Eq_bv (ops, op2))
           | None ->
@@ -343,7 +345,11 @@ let rec create_guard (E_aux (e, (l, _))) =
                 )
               (* == *)
         )
-      | "eq_bits" -> (
+      (* == for bitvec and arbitrary types,
+         eq_anything is probably Sail's structural equality fallback,
+         it's assumed to be a bitvec equality here because the regidx
+         type is a variant so its equality is eq_anything *)
+      | "eq_bits" | "eq_anything" -> (
           match destructure_exps_to_bitv_operands args with
           | Some (ops, op2) -> Eq_bv (ops, op2)
           | None ->

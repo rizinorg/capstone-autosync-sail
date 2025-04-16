@@ -69,6 +69,8 @@ typedef struct RVContext {
   Void2Bool sys_enable_zcb;
   Void2Bool sys_enable_zicbom;
   Void2Bool sys_enable_zicboz;
+  Void2Bool sys_enable_zvkb;
+  Void2Bool sys_enable_sscofpmf;
 
   uint16_t xlen;
   uint16_t xlen_bytes;
@@ -76,6 +78,8 @@ typedef struct RVContext {
 
   uint32_t misa;
   uint64_t mstatus;
+
+  uint64_t vtype;
 
   // constants
   uint8_t zreg;

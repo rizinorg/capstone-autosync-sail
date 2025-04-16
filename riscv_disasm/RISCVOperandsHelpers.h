@@ -31,78 +31,13 @@
 // TODO: implement sign extension as in the Sail stdlib
 #define SIGN_EXTEND(i) (i)
 
-// Some operands are very hard to infer from the Sail RISCV model
-// For example, some instructions are trivial one-liners that return sucess
-// without using their register operands at all, so the generator can't infer
-// which register file those register indices will index into For another
-// example, memory operands is much harder to infer than register operands due
+// memory operands is much harder to infer than register operands due
 // to all the shenanigans that vectorized LOAD/STORE instructions do with memory
 // For those instructions, we simply detect the relevant instruction and
 // manually fill its operands
-void do_fill_operands(struct ast *tree, cs_riscv_op *ops, uint8_t *op_count) {
+void fill_memory_operand(struct ast *tree, cs_riscv_op *ops,
+                         uint8_t *op_count) {
   switch (tree->ast_node_type) {
-  // first, all the hint instructions
-  // hint instructions trivially succeed in the sail model, so
-  // the operand inference never gets a chance to see how
-  // the register indices are used
-  case RISCV_C_ADDI_HINT: {
-    ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_addi_hint);
-    *op_count++;
-    break;
-  }
-  case RISCV_C_MV_HINT: {
-    ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_mv_hint);
-    *op_count++;
-    break;
-  }
-  case RISCV_C_ADD_HINT: {
-    ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_add_hint);
-    *op_count++;
-    break;
-  }
-
-  case RISCV_C_SLLI_HINT: {
-    ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_slli_hint);
-    *op_count++;
-    break;
-  }
-
-  case RISCV_C_SRLI_HINT: {
-    ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_srli_hint);
-    *op_count++;
-    break;
-  }
-
-  case RISCV_C_SRAI_HINT: {
-    ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_srai_hint);
-    *op_count++;
-    break;
-  }
-
-  case RISCV_FENCE_RESERVED: {
-    ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.fence_reserved.rs);
-    ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.fence_reserved.rd);
-    *op_count += 2;
-    break;
-  }
-
-  case RISCV_FENCEI_RESERVED: {
-    ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.fencei_reserved.rs);
-    ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.fencei_reserved.rd);
-    *op_count += 2;
-    break;
-  }
-  // memory accesses, too complex to automatically infer
   case RISCV_LOADRES: {
     // the read from rs1 is falsely inferred as a register read
     // correct it to a memory read with displacement 0

@@ -3,7 +3,7 @@
 /* (see https://github.com/rizinorg/capstone-autosync-sail)*/
 /* from the sail model of RISC-V*/
 /* (see https://github.com/riscv/sail-riscv) @ version
- * 9fe13b6cfff3e3894057e444868743b3df1b9076.*/
+ * dc1155266a1cb6ba2342162601739881b58a1c4e.*/
 /* DO NOT MODIFY THIS CODE MANUALLY. ANY MANUAL EDITS ARE OVERWRITTEN.*/
 /* ------------------------------------------------------------------- */
 /* Copyright © 2024-2025 moste00 <ubermenchun@gmail.com>*/
@@ -2423,6 +2423,18 @@ void cbop_mnemonic(uint64_t member, SStream *ss) {
   }
   case RISCV_CBO_FLUSH: {
     SStream_concat(ss, "cbo.flush");
+    break;
+  }
+  }
+}
+void vsha2c_mnemonic(uint64_t member, SStream *ss) {
+  switch (member) {
+  case RISCV_ZVK_VSHA2CH: {
+    SStream_concat(ss, "vsha2ch.vv");
+    break;
+  }
+  case RISCV_ZVK_VSHA2CL: {
+    SStream_concat(ss, "vsha2cl.vv");
     break;
   }
   }

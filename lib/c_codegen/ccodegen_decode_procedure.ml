@@ -173,10 +173,10 @@ let gen_c_mapbind (start_offset, condition) =
 let rec gen_c_guards cond bound_ids currently_defined_bv_sizes =
   let gen_c_int_operand op =
     match op with
-    | Id_or_funcall (name, []) ->
-        if List.mem name bound_ids then name else "ctx->" ^ name
-    | Id_or_funcall (name, args) ->
-        name ^ "(" ^ String.concat "," args ^ ", ctx)"
+    | Ident name -> if List.mem name bound_ids then name else "ctx->" ^ name
+    | Funcall (name, args) ->
+        if List.length args == 0 then name ^ "(ctx)"
+        else name ^ "(" ^ String.concat "," args ^ ", ctx)"
     | Number n -> string_of_int n
   in
   match cond with
@@ -235,7 +235,12 @@ let rec gen_c_guards cond bound_ids currently_defined_bv_sizes =
       let argnames =
         List.map
           (fun n ->
-            match n.[0] with 'A' .. 'Z' -> identifier_prefix ^ n | _ -> n
+            match n.[0] with
+            | 'A' .. 'Z' -> identifier_prefix ^ n
+            | _ ->
+                if List.mem n bound_ids || Option.is_some (int_of_string_opt n)
+                then n
+                else "ctx->" ^ n
           )
           args
       in

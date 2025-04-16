@@ -3,7 +3,7 @@
 /* (see https://github.com/rizinorg/capstone-autosync-sail)*/
 /* from the sail model of RISC-V*/
 /* (see https://github.com/riscv/sail-riscv) @ version
- * 9fe13b6cfff3e3894057e444868743b3df1b9076.*/
+ * dc1155266a1cb6ba2342162601739881b58a1c4e.*/
 /* DO NOT MODIFY THIS CODE MANUALLY. ANY MANUAL EDITS ARE OVERWRITTEN.*/
 /* ------------------------------------------------------------------- */
 /* Copyright © 2024-2025 moste00 <ubermenchun@gmail.com>*/
@@ -111,6 +111,9 @@ enum riscv_insn {
   RISCV_INSN_C_FSWSP,
   //--------------------- RISCV_VMVXS---------------------
   RISCV_INSN_VMVXS,
+  //--------------------- RISCV_ZVKSHA2TYPE---------------------
+  RISCV_INSN_ZVK_VSHA2CL,
+  RISCV_INSN_ZVK_VSHA2CH,
   //--------------------- RISCV_C_FLD---------------------
   RISCV_INSN_C_FLD,
   //--------------------- RISCV_SHIFTIWOP---------------------
@@ -237,9 +240,7 @@ enum riscv_insn {
   //--------------------- RISCV_C_ADDI16SP---------------------
   RISCV_INSN_C_ADDI16SP,
   //--------------------- RISCV_CSRReg---------------------
-  RISCV_INSN_CSRRW,
-  RISCV_INSN_CSRRS,
-  RISCV_INSN_CSRRC,
+
   //--------------------- RISCV_SHA512SIG0L---------------------
   RISCV_INSN_SHA512SIG0L,
   //--------------------- RISCV_SM3P0---------------------
@@ -260,6 +261,8 @@ enum riscv_insn {
   RISCV_INSN_FMVH_X_D,
   //--------------------- RISCV_SLLIUW---------------------
   RISCV_INSN_SLLIUW,
+  //--------------------- RISCV_ZCMOP---------------------
+  RISCV_INSN_ZCMOP,
   //--------------------- RISCV_FMINM_S---------------------
   RISCV_INSN_FMINM_S,
   //--------------------- RISCV_ZBA_RTYPEUW---------------------
@@ -332,6 +335,8 @@ enum riscv_insn {
   RISCV_INSN_ORI,
   RISCV_INSN_ANDI,
   RISCV_INSN_ADDI,
+  //--------------------- RISCV_VCLMUL_VV---------------------
+  RISCV_INSN_VCLMUL_VV,
   //--------------------- RISCV_F_UN_F_TYPE_H---------------------
   RISCV_INSN_FMV_H_X,
   //--------------------- RISCV_VCLZ_V---------------------
@@ -351,6 +356,8 @@ enum riscv_insn {
   //--------------------- RISCV_ZICOND_RTYPE---------------------
   RISCV_INSN_CZERO_NEZ,
   RISCV_INSN_CZERO_EQZ,
+  //--------------------- RISCV_VCLMULH_VX---------------------
+  RISCV_INSN_VCLMULH_VX,
   //--------------------- RISCV_C_FSDSP---------------------
   RISCV_INSN_C_FSDSP,
   //--------------------- RISCV_SRET---------------------
@@ -433,6 +440,8 @@ enum riscv_insn {
   RISCV_INSN_VLSEGTYPE,
   //--------------------- RISCV_SHA256SIG0---------------------
   RISCV_INSN_SHA256SIG0,
+  //--------------------- RISCV_ZIMOP_MOP_RR---------------------
+  RISCV_INSN_ZIMOP_MOP_RR,
   //--------------------- RISCV_C_ADDI4SPN---------------------
   RISCV_INSN_C_ADDI4SPN,
   //--------------------- RISCV_VVTYPE---------------------
@@ -457,6 +466,8 @@ enum riscv_insn {
   RISCV_INSN_VV_VMAX,
   RISCV_INSN_VV_VAND,
   RISCV_INSN_VV_VADD,
+  //--------------------- RISCV_VSHA2MS_VV---------------------
+  RISCV_INSN_VSHA2MS_VV,
   //--------------------- RISCV_FLEQ_H---------------------
   RISCV_INSN_FLEQ_H,
   //--------------------- RISCV_VICMPTYPE---------------------
@@ -602,6 +613,8 @@ enum riscv_insn {
   RISCV_INSN_VI_VSLIDEUP,
   RISCV_INSN_VI_VSLIDEDOWN,
   RISCV_INSN_VI_VRGATHER,
+  //--------------------- RISCV_VCLMUL_VX---------------------
+  RISCV_INSN_VCLMUL_VX,
   //--------------------- RISCV_C_ADD---------------------
   RISCV_INSN_C_ADD,
   //--------------------- RISCV_FVFTYPE---------------------
@@ -660,6 +673,8 @@ enum riscv_insn {
   RISCV_INSN_VIMS_VADC,
   //--------------------- RISCV_MASKTYPEV---------------------
   RISCV_INSN_MASKTYPEV,
+  //--------------------- RISCV_THREAD_START---------------------
+  RISCV_INSN_THREAD_START,
   //--------------------- RISCV_FVFMTYPE---------------------
   RISCV_INSN_VFM_VMFNE,
   RISCV_INSN_VFM_VMFLT,
@@ -706,6 +721,8 @@ enum riscv_insn {
   RISCV_INSN_C_JAL,
   //--------------------- RISCV_SFENCE_VMA---------------------
   RISCV_INSN_SFENCE_VMA,
+  //--------------------- RISCV_STOP_FETCHING---------------------
+  RISCV_INSN_STOP_FETCHING,
   //--------------------- RISCV_NVSTYPE---------------------
   RISCV_INSN_NVS_VNSRL,
   RISCV_INSN_NVS_VNSRA,
@@ -845,6 +862,8 @@ enum riscv_insn {
   RISCV_INSN_BCLRI,
   //--------------------- RISCV_C_XOR---------------------
   RISCV_INSN_C_XOR,
+  //--------------------- RISCV_ZIMOP_MOP_R---------------------
+  RISCV_INSN_ZIMOP_MOP_R,
   //--------------------- RISCV_FMINM_H---------------------
   RISCV_INSN_FMINM_H,
   //--------------------- RISCV_C_LUI_HINT---------------------
@@ -1000,6 +1019,8 @@ enum riscv_insn {
   RISCV_INSN_VREV8_V,
   //--------------------- RISCV_BREV8---------------------
   RISCV_INSN_BREV8,
+  //--------------------- RISCV_VCLMULH_VV---------------------
+  RISCV_INSN_VCLMULH_VV,
   //--------------------- RISCV_AES32DSMI---------------------
   RISCV_INSN_AES32DSMI,
   //--------------------- RISCV_VANDN_VV---------------------

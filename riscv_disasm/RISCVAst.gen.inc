@@ -3,7 +3,7 @@
 /* (see https://github.com/rizinorg/capstone-autosync-sail)*/
 /* from the sail model of RISC-V*/
 /* (see https://github.com/riscv/sail-riscv) @ version
- * 9fe13b6cfff3e3894057e444868743b3df1b9076.*/
+ * dc1155266a1cb6ba2342162601739881b58a1c4e.*/
 /* DO NOT MODIFY THIS CODE MANUALLY. ANY MANUAL EDITS ARE OVERWRITTEN.*/
 /* ------------------------------------------------------------------- */
 /* Copyright © 2024-2025 moste00 <ubermenchun@gmail.com>*/
@@ -341,7 +341,18 @@ struct ast {
     RISCV_VROR_VI,
     RISCV_VWSLL_VV,
     RISCV_VWSLL_VX,
-    RISCV_VWSLL_VI
+    RISCV_VWSLL_VI,
+    RISCV_VCLMUL_VV,
+    RISCV_VCLMUL_VX,
+    RISCV_VCLMULH_VV,
+    RISCV_VCLMULH_VX,
+    RISCV_VSHA2MS_VV,
+    RISCV_ZVKSHA2TYPE,
+    RISCV_ZIMOP_MOP_R,
+    RISCV_ZIMOP_MOP_RR,
+    RISCV_ZCMOP,
+    RISCV_STOP_FETCHING,
+    RISCV_THREAD_START
   } ast_node_type;
   union {
     uint32_t illegal;
@@ -2413,6 +2424,53 @@ struct ast {
       uint8_t uimm /* bits : 5 */;
       uint8_t vd /* bits : 5 */;
     } vwsll_vi;
+    struct {
+      uint8_t vm /* bits : 1 */;
+      uint8_t vs2 /* bits : 5 */;
+      uint8_t vs1 /* bits : 5 */;
+      uint8_t vd /* bits : 5 */;
+    } vclmul_vv;
+    struct {
+      uint8_t vm /* bits : 1 */;
+      uint8_t vs2 /* bits : 5 */;
+      uint8_t rs1 /* bits : 5 */;
+      uint8_t vd /* bits : 5 */;
+    } vclmul_vx;
+    struct {
+      uint8_t vm /* bits : 1 */;
+      uint8_t vs2 /* bits : 5 */;
+      uint8_t vs1 /* bits : 5 */;
+      uint8_t vd /* bits : 5 */;
+    } vclmulh_vv;
+    struct {
+      uint8_t vm /* bits : 1 */;
+      uint8_t vs2 /* bits : 5 */;
+      uint8_t rs1 /* bits : 5 */;
+      uint8_t vd /* bits : 5 */;
+    } vclmulh_vx;
+    struct {
+      uint8_t vs2 /* bits : 5 */;
+      uint8_t vs1 /* bits : 5 */;
+      uint8_t vd /* bits : 5 */;
+    } vsha2ms_vv;
+    struct {
+      enum zvkfunct6 { RISCV_ZVK_VSHA2CH, RISCV_ZVK_VSHA2CL } funct6;
+      uint8_t vs2 /* bits : 5 */;
+      uint8_t vs1 /* bits : 5 */;
+      uint8_t vd /* bits : 5 */;
+    } zvksha2type;
+    struct {
+      uint8_t mop /* bits : 5 */;
+      uint8_t rs1 /* bits : 5 */;
+      uint8_t rd /* bits : 5 */;
+    } zimop_mop_r;
+    struct {
+      uint8_t mop /* bits : 3 */;
+      uint8_t rs2 /* bits : 5 */;
+      uint8_t rs1 /* bits : 5 */;
+      uint8_t rd /* bits : 5 */;
+    } zimop_mop_rr;
+    uint8_t zcmop /* bits : 3 */;
   } ast_node;
 };
 #endif

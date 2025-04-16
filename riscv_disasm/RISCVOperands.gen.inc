@@ -3,7 +3,7 @@
 /* (see https://github.com/rizinorg/capstone-autosync-sail)*/
 /* from the sail model of RISC-V*/
 /* (see https://github.com/riscv/sail-riscv) @ version
- * 9fe13b6cfff3e3894057e444868743b3df1b9076.*/
+ * dc1155266a1cb6ba2342162601739881b58a1c4e.*/
 /* DO NOT MODIFY THIS CODE MANUALLY. ANY MANUAL EDITS ARE OVERWRITTEN.*/
 /* ------------------------------------------------------------------- */
 /* Copyright © 2024-2025 moste00 <ubermenchun@gmail.com>*/
@@ -18,6 +18,7 @@
 
 #include "../../include/capstone/capstone.h"
 #include "RISCVAst.gen.inc"
+#include "RISCVOperandsHelpers.h"
 
 static void fill_operands(struct ast *tree, cs_riscv_op *ops,
                           uint8_t *op_count) {
@@ -39,7 +40,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     *op_count = 1;
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_srai_hint);
-    ops[0].access = CS_AC_WRITE;
+    ops[0].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
   case RISCV_AES64ES: {
@@ -70,9 +71,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_SWSP: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_swsp.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_swsp.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_swsp.rs2);
     ops[1].access = CS_AC_READ;
@@ -80,9 +81,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_FLW: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_flw.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_flw.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_flw.rsc);
     ops[1].access = CS_AC_READ;
@@ -109,9 +110,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_VECTOR_REG(tree->ast_node.vicmptype.vs2);
     ops[0].access = CS_AC_READ;
-    ops[1] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.vicmptype.simm,
-              .access = CS_AC_READ};
+    ops[1].type = RISCV_OP_IMM;
+    ops[1].imm = tree->ast_node.vicmptype.simm;
+    ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
     ops[2].reg = AS_VECTOR_REG(tree->ast_node.vicmptype.vd);
     ops[2].access = CS_AC_WRITE;
@@ -138,6 +139,19 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.sha256sig1.rd);
     ops[1].access = CS_AC_WRITE;
+    break;
+  }
+  case RISCV_VSHA2MS_VV: {
+    *op_count = 3;
+    ops[0].type = RISCV_OP_REG;
+    ops[0].reg = AS_VECTOR_REG(tree->ast_node.vsha2ms_vv.vs2);
+    ops[0].access = CS_AC_READ;
+    ops[1].type = RISCV_OP_REG;
+    ops[1].reg = AS_VECTOR_REG(tree->ast_node.vsha2ms_vv.vs1);
+    ops[1].access = CS_AC_READ;
+    ops[2].type = RISCV_OP_REG;
+    ops[2].reg = AS_VECTOR_REG(tree->ast_node.vsha2ms_vv.vd);
+    ops[2].access = CS_AC_WRITE;
     break;
   }
   case RISCV_VCPOP_M: {
@@ -167,7 +181,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_addw.rsd);
-    ops[0].access = CS_AC_WRITE;
+    ops[0].access = CS_AC_READ | CS_AC_WRITE;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_addw.rs2);
     ops[1].access = CS_AC_READ;
@@ -178,16 +192,16 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_addi4spn.rdc);
     ops[0].access = CS_AC_WRITE;
-    ops[1] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_addi4spn.nzimm,
-              .access = CS_AC_READ};
+    ops[1].type = RISCV_OP_IMM;
+    ops[1].imm = tree->ast_node.c_addi4spn.nzimm;
+    ops[1].access = CS_AC_READ;
     break;
   }
   case RISCV_C_FSD: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_fsd.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_fsd.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_fsd.rsc1);
     ops[1].access = CS_AC_READ;
@@ -211,9 +225,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_AES32DSMI: {
     *op_count = 4;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.aes32dsmi.bs,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.aes32dsmi.bs;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.aes32dsmi.rs2);
     ops[1].access = CS_AC_READ;
@@ -225,6 +239,19 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[3].access = CS_AC_WRITE;
     break;
   }
+  case RISCV_VCLMULH_VV: {
+    *op_count = 3;
+    ops[0].type = RISCV_OP_REG;
+    ops[0].reg = AS_VECTOR_REG(tree->ast_node.vclmulh_vv.vs2);
+    ops[0].access = CS_AC_READ;
+    ops[1].type = RISCV_OP_REG;
+    ops[1].reg = AS_VECTOR_REG(tree->ast_node.vclmulh_vv.vs1);
+    ops[1].access = CS_AC_READ;
+    ops[2].type = RISCV_OP_REG;
+    ops[2].reg = AS_VECTOR_REG(tree->ast_node.vclmulh_vv.vd);
+    ops[2].access = CS_AC_WRITE;
+    break;
+  }
   case RISCV_BREV8: {
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
@@ -233,6 +260,19 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.riscv_brev8.rd);
     ops[1].access = CS_AC_WRITE;
+    break;
+  }
+  case RISCV_ZIMOP_MOP_RR: {
+    *op_count = 3;
+    ops[0].type = RISCV_OP_REG;
+    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.zimop_mop_rr.rs2);
+    ops[0].access = CS_AC_READ;
+    ops[1].type = RISCV_OP_REG;
+    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.zimop_mop_rr.rs1);
+    ops[1].access = CS_AC_READ;
+    ops[2].type = RISCV_OP_REG;
+    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.zimop_mop_rr.rd);
+    ops[2].access = CS_AC_WRITE;
     break;
   }
   case RISCV_VREV8_V: {
@@ -257,9 +297,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_ILLEGAL: {
     *op_count = 1;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.illegal,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.illegal;
+    ops[0].access = CS_AC_READ;
     break;
   }
   case RISCV_VLSEGTYPE: {
@@ -375,9 +415,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_LBU: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_lbu.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_lbu.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lbu.rdc);
     ops[1].access = CS_AC_WRITE;
@@ -401,9 +441,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_LUI: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_lui.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_lui.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lui.rd);
     ops[1].access = CS_AC_WRITE;
@@ -421,12 +461,12 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_SRAI: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_srai.shamt,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_srai.shamt;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_srai.rsd);
-    ops[1].access = CS_AC_WRITE;
+    ops[1].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
   case RISCV_F_BIN_X_TYPE_H: {
@@ -448,9 +488,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_LI: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_li.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_li.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_li.rd);
     ops[1].access = CS_AC_WRITE;
@@ -520,9 +560,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_LOAD_FP: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.load_fp.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.load_fp.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.load_fp.rs1);
     ops[1].access = CS_AC_READ;
@@ -585,12 +625,12 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_SLLI_HINT: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_slli_hint.shamt,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_slli_hint.shamt;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_slli_hint.rsd);
-    ops[1].access = CS_AC_WRITE;
+    ops[1].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
   case RISCV_VSRETYPE: {
@@ -618,12 +658,12 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_SRLI: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_srli.shamt,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_srli.shamt;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_srli.rsd);
-    ops[1].access = CS_AC_WRITE;
+    ops[1].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
   case RISCV_FCVTMOD_W_D: {
@@ -667,9 +707,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_VECTOR_REG(tree->ast_node.vwsll_vi.vs2);
     ops[0].access = CS_AC_READ;
-    ops[1] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.vwsll_vi.uimm,
-              .access = CS_AC_READ};
+    ops[1].type = RISCV_OP_IMM;
+    ops[1].imm = tree->ast_node.vwsll_vi.uimm;
+    ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
     ops[2].reg = AS_VECTOR_REG(tree->ast_node.vwsll_vi.vd);
     ops[2].access = CS_AC_WRITE;
@@ -724,9 +764,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_FLDSP: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_fldsp.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_fldsp.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_FLOAT_REG(tree->ast_node.c_fldsp.rd);
     ops[1].access = CS_AC_WRITE;
@@ -747,9 +787,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_SB: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_sb.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_sb.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sb.rs1c);
     ops[1].access = CS_AC_READ;
@@ -760,9 +800,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_FLI_S: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.riscv_fli_s.constantidx,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.riscv_fli_s.constantidx;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_FLOAT_REG(tree->ast_node.riscv_fli_s.rd);
     ops[1].access = CS_AC_WRITE;
@@ -854,9 +894,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_STORE_FP: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.store_fp.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.store_fp.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_FLOAT_REG(tree->ast_node.store_fp.rs2);
     ops[1].access = CS_AC_READ;
@@ -880,9 +920,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_AES64KS1I: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.aes64ks1i.rnum,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.aes64ks1i.rnum;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.aes64ks1i.rs1);
     ops[1].access = CS_AC_READ;
@@ -910,9 +950,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_BNEZ: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_bnez.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_bnez.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_bnez.rs);
     ops[1].access = CS_AC_READ;
@@ -920,12 +960,25 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_FSDSP: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_fsdsp.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_fsdsp.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_FLOAT_REG(tree->ast_node.c_fsdsp.rs2);
     ops[1].access = CS_AC_READ;
+    break;
+  }
+  case RISCV_VCLMULH_VX: {
+    *op_count = 3;
+    ops[0].type = RISCV_OP_REG;
+    ops[0].reg = AS_VECTOR_REG(tree->ast_node.vclmulh_vx.vs2);
+    ops[0].access = CS_AC_READ;
+    ops[1].type = RISCV_OP_REG;
+    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.vclmulh_vx.rs1);
+    ops[1].access = CS_AC_READ;
+    ops[2].type = RISCV_OP_REG;
+    ops[2].reg = AS_VECTOR_REG(tree->ast_node.vclmulh_vx.vd);
+    ops[2].access = CS_AC_WRITE;
     break;
   }
   case RISCV_VCPOP_V: {
@@ -1029,9 +1082,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_LUI_HINT: {
     *op_count = 1;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_lui_hint,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_lui_hint;
+    ops[0].access = CS_AC_READ;
     break;
   }
   case RISCV_FMINM_H: {
@@ -1049,9 +1102,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_STORE: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.store.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.store.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.store.rs2);
     ops[1].access = CS_AC_READ;
@@ -1062,9 +1115,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_FLWSP: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_flwsp.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_flwsp.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_FLOAT_REG(tree->ast_node.c_flwsp.rd);
     ops[1].access = CS_AC_WRITE;
@@ -1081,11 +1134,21 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].access = CS_AC_WRITE;
     break;
   }
+  case RISCV_ZIMOP_MOP_R: {
+    *op_count = 2;
+    ops[0].type = RISCV_OP_REG;
+    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.zimop_mop_r.rs1);
+    ops[0].access = CS_AC_READ;
+    ops[1].type = RISCV_OP_REG;
+    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.zimop_mop_r.rd);
+    ops[1].access = CS_AC_WRITE;
+    break;
+  }
   case RISCV_C_XOR: {
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_xor.rsd);
-    ops[0].access = CS_AC_WRITE;
+    ops[0].access = CS_AC_READ | CS_AC_WRITE;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_xor.rs2);
     ops[1].access = CS_AC_READ;
@@ -1093,9 +1156,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_ZBS_IOP: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.zbs_iop.shamt,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.zbs_iop.shamt;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.zbs_iop.rs1);
     ops[1].access = CS_AC_READ;
@@ -1147,11 +1210,24 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[2].access = CS_AC_WRITE;
     break;
   }
+  case RISCV_VCLMUL_VV: {
+    *op_count = 3;
+    ops[0].type = RISCV_OP_REG;
+    ops[0].reg = AS_VECTOR_REG(tree->ast_node.vclmul_vv.vs2);
+    ops[0].access = CS_AC_READ;
+    ops[1].type = RISCV_OP_REG;
+    ops[1].reg = AS_VECTOR_REG(tree->ast_node.vclmul_vv.vs1);
+    ops[1].access = CS_AC_READ;
+    ops[2].type = RISCV_OP_REG;
+    ops[2].reg = AS_VECTOR_REG(tree->ast_node.vclmul_vv.vd);
+    ops[2].access = CS_AC_WRITE;
+    break;
+  }
   case RISCV_ITYPE: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.itype.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.itype.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.itype.rs1);
     ops[1].access = CS_AC_READ;
@@ -1198,9 +1274,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_LD: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_ld.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_ld.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_ld.rsc);
     ops[1].access = CS_AC_READ;
@@ -1211,12 +1287,12 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_ADDIW: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_addiw.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_addiw.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_addiw.rsd);
-    ops[1].access = CS_AC_WRITE;
+    ops[1].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
   case RISCV_MVVTYPE: {
@@ -1285,9 +1361,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_RORIW: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.riscv_roriw.shamt,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.riscv_roriw.shamt;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.riscv_roriw.rs1);
     ops[1].access = CS_AC_READ;
@@ -1298,9 +1374,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_SM4KS: {
     *op_count = 4;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.sm4ks.bs,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.sm4ks.bs;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.sm4ks.rs2);
     ops[1].access = CS_AC_READ;
@@ -1369,7 +1445,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sub.rsd);
-    ops[0].access = CS_AC_WRITE;
+    ops[0].access = CS_AC_READ | CS_AC_WRITE;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sub.rs2);
     ops[1].access = CS_AC_READ;
@@ -1416,9 +1492,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_SW: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_sw.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_sw.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sw.rsc1);
     ops[1].access = CS_AC_READ;
@@ -1429,9 +1505,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_FSW: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_fsw.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_fsw.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_fsw.rsc1);
     ops[1].access = CS_AC_READ;
@@ -1462,9 +1538,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_LDSP: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_ldsp.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_ldsp.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_ldsp.rd);
     ops[1].access = CS_AC_WRITE;
@@ -1488,9 +1564,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_VECTOR_REG(tree->ast_node.vror_vi.vs2);
     ops[0].access = CS_AC_READ;
-    ops[1] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.vror_vi.uimm,
-              .access = CS_AC_READ};
+    ops[1].type = RISCV_OP_IMM;
+    ops[1].imm = tree->ast_node.vror_vi.uimm;
+    ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
     ops[2].reg = AS_VECTOR_REG(tree->ast_node.vror_vi.vd);
     ops[2].access = CS_AC_WRITE;
@@ -1631,11 +1707,15 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[1].access = CS_AC_WRITE;
     break;
   }
+  case RISCV_ZCMOP: {
+    *op_count = 0;
+    break;
+  }
   case RISCV_C_BEQZ: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_beqz.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_beqz.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_beqz.rs);
     ops[1].access = CS_AC_READ;
@@ -1643,9 +1723,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_SLLIUW: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.riscv_slliuw.shamt,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.riscv_slliuw.shamt;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.riscv_slliuw.rs1);
     ops[1].access = CS_AC_READ;
@@ -1666,9 +1746,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_AES32ESI: {
     *op_count = 4;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.aes32esi.bs,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.aes32esi.bs;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.aes32esi.rs2);
     ops[1].access = CS_AC_READ;
@@ -1682,8 +1762,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_J: {
     *op_count = 1;
-    ops[0] = {
-        .type = RISCV_OP_IMM, .imm = tree->ast_node.c_j, .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_j;
+    ops[0].access = CS_AC_READ;
     break;
   }
   case RISCV_CTZ: {
@@ -1731,9 +1812,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_VECTOR_REG(tree->ast_node.vimtype.vs2);
     ops[0].access = CS_AC_READ;
-    ops[1] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.vimtype.simm,
-              .access = CS_AC_READ};
+    ops[1].type = RISCV_OP_IMM;
+    ops[1].imm = tree->ast_node.vimtype.simm;
+    ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
     ops[2].reg = AS_VECTOR_REG(tree->ast_node.vimtype.vd);
     ops[2].access = CS_AC_WRITE;
@@ -1791,9 +1872,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_SHIFTIOP: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.shiftiop.shamt,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.shiftiop.shamt;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.shiftiop.rs1);
     ops[1].access = CS_AC_READ;
@@ -1817,9 +1898,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_SM4ED: {
     *op_count = 4;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.sm4ed.bs,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.sm4ed.bs;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.sm4ed.rs2);
     ops[1].access = CS_AC_READ;
@@ -1866,16 +1947,16 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_ADDI16SP: {
     *op_count = 1;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_addi16sp,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_addi16sp;
+    ops[0].access = CS_AC_READ;
     break;
   }
   case RISCV_C_LWSP: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_lwsp.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_lwsp.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lwsp.rd);
     ops[1].access = CS_AC_WRITE;
@@ -1896,9 +1977,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_LW: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_lw.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_lw.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lw.rsc);
     ops[1].access = CS_AC_READ;
@@ -1911,7 +1992,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_or.rsd);
-    ops[0].access = CS_AC_WRITE;
+    ops[0].access = CS_AC_READ | CS_AC_WRITE;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_or.rs2);
     ops[1].access = CS_AC_READ;
@@ -1945,9 +2026,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_VECTOR_REG(tree->ast_node.movetypei.vd);
     ops[0].access = CS_AC_WRITE;
-    ops[1] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.movetypei.simm,
-              .access = CS_AC_READ};
+    ops[1].type = RISCV_OP_IMM;
+    ops[1].imm = tree->ast_node.movetypei.simm;
+    ops[1].access = CS_AC_READ;
     break;
   }
   case RISCV_VFMVSF: {
@@ -2015,9 +2096,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_AES32ESMI: {
     *op_count = 4;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.aes32esmi.bs,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.aes32esmi.bs;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.aes32esmi.rs2);
     ops[1].access = CS_AC_READ;
@@ -2031,12 +2112,12 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_SLLI: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_slli.shamt,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_slli.shamt;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_slli.rsd);
-    ops[1].access = CS_AC_WRITE;
+    ops[1].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
   case RISCV_NISTYPE: {
@@ -2044,9 +2125,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_VECTOR_REG(tree->ast_node.nistype.vs2);
     ops[0].access = CS_AC_READ;
-    ops[1] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.nistype.simm,
-              .access = CS_AC_READ};
+    ops[1].type = RISCV_OP_IMM;
+    ops[1].imm = tree->ast_node.nistype.simm;
+    ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
     ops[2].reg = AS_VECTOR_REG(tree->ast_node.nistype.vd);
     ops[2].access = CS_AC_WRITE;
@@ -2073,6 +2154,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[2].type = RISCV_OP_REG;
     ops[2].reg = AS_VECTOR_REG(tree->ast_node.nvstype.vd);
     ops[2].access = CS_AC_WRITE;
+    break;
+  }
+  case RISCV_STOP_FETCHING: {
+    *op_count = 0;
     break;
   }
   case RISCV_F_BIN_F_TYPE_D: {
@@ -2126,9 +2211,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_JAL: {
     *op_count = 1;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_jal,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_jal;
+    ops[0].access = CS_AC_READ;
     break;
   }
   case RISCV_FROUND_H: {
@@ -2148,7 +2233,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_VECTOR_REG(tree->ast_node.vmtype.vd_or_vs3);
-    ops[1].access = CS_AC_WRITE;
+    ops[1].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
   case RISCV_FWVVTYPE: {
@@ -2179,9 +2264,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_SH: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_sh.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_sh.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sh.rs1c);
     ops[1].access = CS_AC_READ;
@@ -2217,7 +2302,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_subw.rsd);
-    ops[0].access = CS_AC_WRITE;
+    ops[0].access = CS_AC_READ | CS_AC_WRITE;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_subw.rs2);
     ops[1].access = CS_AC_READ;
@@ -2255,9 +2340,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_SDSP: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_sdsp.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_sdsp.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sdsp.rs2);
     ops[1].access = CS_AC_READ;
@@ -2304,12 +2389,12 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_ANDI: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_andi.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_andi.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_andi.rsd);
-    ops[1].access = CS_AC_WRITE;
+    ops[1].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
   case RISCV_VLSEGFFTYPE: {
@@ -2324,9 +2409,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_ILLEGAL: {
     *op_count = 1;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_illegal,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_illegal;
+    ops[0].access = CS_AC_READ;
     break;
   }
   case RISCV_FMAXM_S: {
@@ -2384,9 +2469,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_ADDIW: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.addiw.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.addiw.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.addiw.rs1);
     ops[1].access = CS_AC_READ;
@@ -2431,6 +2516,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[2].access = CS_AC_WRITE;
     break;
   }
+  case RISCV_THREAD_START: {
+    *op_count = 0;
+    break;
+  }
   case RISCV_C_MUL: {
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
@@ -2459,9 +2548,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_VECTOR_REG(tree->ast_node.vimstype.vs2);
     ops[0].access = CS_AC_READ;
-    ops[1] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.vimstype.simm,
-              .access = CS_AC_READ};
+    ops[1].type = RISCV_OP_IMM;
+    ops[1].imm = tree->ast_node.vimstype.simm;
+    ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
     ops[2].reg = AS_VECTOR_REG(tree->ast_node.vimstype.vd);
     ops[2].access = CS_AC_WRITE;
@@ -2472,9 +2561,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_VECTOR_REG(tree->ast_node.vimctype.vs2);
     ops[0].access = CS_AC_READ;
-    ops[1] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.vimctype.simm,
-              .access = CS_AC_READ};
+    ops[1].type = RISCV_OP_IMM;
+    ops[1].imm = tree->ast_node.vimctype.simm;
+    ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
     ops[2].reg = AS_VECTOR_REG(tree->ast_node.vimctype.vd);
     ops[2].access = CS_AC_WRITE;
@@ -2584,16 +2673,16 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_LI_HINT: {
     *op_count = 1;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_li_hint,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_li_hint;
+    ops[0].access = CS_AC_READ;
     break;
   }
   case RISCV_C_SD: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_sd.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_sd.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sd.rsc1);
     ops[1].access = CS_AC_READ;
@@ -2640,9 +2729,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_VSETIVLI: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.vsetivli.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.vsetivli.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.vsetivli.rd);
     ops[1].access = CS_AC_WRITE;
@@ -2653,9 +2742,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_VECTOR_REG(tree->ast_node.masktypei.vs2);
     ops[0].access = CS_AC_READ;
-    ops[1] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.masktypei.simm,
-              .access = CS_AC_READ};
+    ops[1].type = RISCV_OP_IMM;
+    ops[1].imm = tree->ast_node.masktypei.simm;
+    ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
     ops[2].reg = AS_VECTOR_REG(tree->ast_node.masktypei.vd);
     ops[2].access = CS_AC_WRITE;
@@ -2663,9 +2752,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_FENCE_RESERVED: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.fence_reserved.fm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.fence_reserved.fm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.fence_reserved.rs);
     ops[1].access = CS_AC_READ;
@@ -2711,7 +2800,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     *op_count = 1;
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_addi_hint);
-    ops[0].access = CS_AC_WRITE;
+    ops[0].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
   case RISCV_F_UN_RM_FX_TYPE_D: {
@@ -2726,9 +2815,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_FLI_D: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.riscv_fli_d.constantidx,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.riscv_fli_d.constantidx;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_FLOAT_REG(tree->ast_node.riscv_fli_d.rd);
     ops[1].access = CS_AC_WRITE;
@@ -2781,7 +2870,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_add.rsd);
-    ops[0].access = CS_AC_WRITE;
+    ops[0].access = CS_AC_READ | CS_AC_WRITE;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_add.rs2);
     ops[1].access = CS_AC_READ;
@@ -2792,9 +2881,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_VECTOR_REG(tree->ast_node.nitype.vs2);
     ops[0].access = CS_AC_READ;
-    ops[1] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.nitype.simm,
-              .access = CS_AC_READ};
+    ops[1].type = RISCV_OP_IMM;
+    ops[1].imm = tree->ast_node.nitype.simm;
+    ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
     ops[2].reg = AS_VECTOR_REG(tree->ast_node.nitype.vd);
     ops[2].access = CS_AC_WRITE;
@@ -2817,6 +2906,19 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].access = CS_AC_READ;
     break;
   }
+  case RISCV_VCLMUL_VX: {
+    *op_count = 3;
+    ops[0].type = RISCV_OP_REG;
+    ops[0].reg = AS_VECTOR_REG(tree->ast_node.vclmul_vx.vs2);
+    ops[0].access = CS_AC_READ;
+    ops[1].type = RISCV_OP_REG;
+    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.vclmul_vx.rs1);
+    ops[1].access = CS_AC_READ;
+    ops[2].type = RISCV_OP_REG;
+    ops[2].reg = AS_VECTOR_REG(tree->ast_node.vclmul_vx.vd);
+    ops[2].access = CS_AC_WRITE;
+    break;
+  }
   case RISCV_UNZIP: {
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
@@ -2829,9 +2931,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_SHIFTIWOP: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.shiftiwop.shamt,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.shiftiwop.shamt;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.shiftiwop.rs1);
     ops[1].access = CS_AC_READ;
@@ -2842,9 +2944,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_FLD: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_fld.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_fld.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_fld.rsc);
     ops[1].access = CS_AC_READ;
@@ -2858,9 +2960,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_VECTOR_REG(tree->ast_node.visg.vs2);
     ops[0].access = CS_AC_READ;
-    ops[1] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.visg.simm,
-              .access = CS_AC_READ};
+    ops[1].type = RISCV_OP_IMM;
+    ops[1].imm = tree->ast_node.visg.simm;
+    ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
     ops[2].reg = AS_VECTOR_REG(tree->ast_node.visg.vd);
     ops[2].access = CS_AC_WRITE;
@@ -2874,6 +2976,19 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.f_un_rm_fx_type_h.rd);
     ops[1].access = CS_AC_WRITE;
+    break;
+  }
+  case RISCV_ZVKSHA2TYPE: {
+    *op_count = 3;
+    ops[0].type = RISCV_OP_REG;
+    ops[0].reg = AS_VECTOR_REG(tree->ast_node.zvksha2type.vs2);
+    ops[0].access = CS_AC_READ;
+    ops[1].type = RISCV_OP_REG;
+    ops[1].reg = AS_VECTOR_REG(tree->ast_node.zvksha2type.vs1);
+    ops[1].access = CS_AC_READ;
+    ops[2].type = RISCV_OP_REG;
+    ops[2].reg = AS_VECTOR_REG(tree->ast_node.zvksha2type.vd);
+    ops[2].access = CS_AC_WRITE;
     break;
   }
   case RISCV_VWSLL_VX: {
@@ -2940,9 +3055,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_VECTOR_REG(tree->ast_node.vitype.vs2);
     ops[0].access = CS_AC_READ;
-    ops[1] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.vitype.simm,
-              .access = CS_AC_READ};
+    ops[1].type = RISCV_OP_IMM;
+    ops[1].imm = tree->ast_node.vitype.simm;
+    ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
     ops[2].reg = AS_VECTOR_REG(tree->ast_node.vitype.vd);
     ops[2].access = CS_AC_WRITE;
@@ -2950,9 +3065,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_FSWSP: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_fswsp.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_fswsp.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_FLOAT_REG(tree->ast_node.c_fswsp.rs2);
     ops[1].access = CS_AC_READ;
@@ -3007,9 +3122,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_JAL: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.riscv_jal.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.riscv_jal.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.riscv_jal.rd);
     ops[1].access = CS_AC_WRITE;
@@ -3027,9 +3142,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_LHU: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_lhu.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_lhu.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lhu.rdc);
     ops[1].access = CS_AC_WRITE;
@@ -3086,9 +3201,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_FLI_H: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.riscv_fli_h.constantidx,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.riscv_fli_h.constantidx;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_FLOAT_REG(tree->ast_node.riscv_fli_h.rd);
     ops[1].access = CS_AC_WRITE;
@@ -3109,9 +3224,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_UTYPE: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.utype.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.utype.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.utype.rd);
     ops[1].access = CS_AC_WRITE;
@@ -3243,9 +3358,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_CSRImm: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.csrimm.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.csrimm.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.csrimm.rd);
     ops[1].access = CS_AC_WRITE;
@@ -3253,9 +3368,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_LOAD: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.load.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.load.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.load.rs1);
     ops[1].access = CS_AC_READ;
@@ -3289,9 +3404,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_BTYPE: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.btype.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.btype.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.btype.rs2);
     ops[1].access = CS_AC_READ;
@@ -3328,9 +3443,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_RORI: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.riscv_rori.shamt,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.riscv_rori.shamt;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.riscv_rori.rs1);
     ops[1].access = CS_AC_READ;
@@ -3341,9 +3456,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_JALR: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.riscv_jalr.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.riscv_jalr.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.riscv_jalr.rs1);
     ops[1].access = CS_AC_READ;
@@ -3367,9 +3482,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_AES32DSI: {
     *op_count = 4;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.aes32dsi.bs,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.aes32dsi.bs;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.aes32dsi.rs2);
     ops[1].access = CS_AC_READ;
@@ -3385,7 +3500,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_and.rsd);
-    ops[0].access = CS_AC_WRITE;
+    ops[0].access = CS_AC_READ | CS_AC_WRITE;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_and.rs2);
     ops[1].access = CS_AC_READ;
@@ -3525,19 +3640,19 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_ADDI: {
     *op_count = 2;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_addi.nzi,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_addi.nzi;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_addi.rsd);
-    ops[1].access = CS_AC_WRITE;
+    ops[1].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
   case RISCV_FENCEI_RESERVED: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.fencei_reserved.imm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.fencei_reserved.imm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.fencei_reserved.rs);
     ops[1].access = CS_AC_READ;
@@ -3576,7 +3691,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     *op_count = 1;
     ops[0].type = RISCV_OP_REG;
     ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_srli_hint);
-    ops[0].access = CS_AC_WRITE;
+    ops[0].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
   case RISCV_VFIRST_M: {
@@ -3604,9 +3719,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_NOP_HINT: {
     *op_count = 1;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_nop_hint,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_nop_hint;
+    ops[0].access = CS_AC_READ;
     break;
   }
   case RISCV_REV8: {
@@ -3621,9 +3736,9 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   }
   case RISCV_C_LH: {
     *op_count = 3;
-    ops[0] = {.type = RISCV_OP_IMM,
-              .imm = tree->ast_node.c_lh.uimm,
-              .access = CS_AC_READ};
+    ops[0].type = RISCV_OP_IMM;
+    ops[0].imm = tree->ast_node.c_lh.uimm;
+    ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
     ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lh.rdc);
     ops[1].access = CS_AC_WRITE;
