@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-typedef uint8_t (*Void2Bool)(void);
 typedef uint8_t RVBool;
 
 // MISA fields
@@ -61,23 +60,16 @@ typedef uint8_t RVBool;
 
 #define MSTATUS(e) (ctx->mstatus & MSTATUS_##e)
 
-typedef struct RVContext {
-  Void2Bool sys_enable_fdext;
-  Void2Bool sys_enable_zfinx;
-  Void2Bool sys_enable_sstx;
-  Void2Bool sys_enable_svinval;
-  Void2Bool sys_enable_zcb;
-  Void2Bool sys_enable_zicbom;
-  Void2Bool sys_enable_zicboz;
-  Void2Bool sys_enable_zvkb;
-  Void2Bool sys_enable_sscofpmf;
+#define HART_SUPPORTS(e) (1)
 
+typedef struct RVContext {
   uint16_t xlen;
   uint16_t xlen_bytes;
   uint16_t flen;
 
   uint32_t misa;
   uint64_t mstatus;
+  uint64_t extensionsSupported;
 
   uint64_t vtype;
 
