@@ -2,8 +2,7 @@
 #define __RISCV_CONTEXT_H__
 
 #include <stdint.h>
-
-typedef uint8_t RVBool;
+#include <stdbool.h>
 
 // MISA fields
 #define MISA_A (1UL << 0)  // Atomic extension
@@ -60,7 +59,10 @@ typedef uint8_t RVBool;
 
 #define MSTATUS(e) (ctx->mstatus & MSTATUS_##e)
 
-#define HART_SUPPORTS(e) (1)
+#define VTYPE_VSEW (7ULL << 3)
+#define VTYPE_VLMUL (7ULL << 0)
+
+#define VTYPE(e) (ctx->vtype & VTYPE_##e)
 
 typedef struct RVContext {
   uint16_t xlen;
@@ -72,6 +74,9 @@ typedef struct RVContext {
   uint64_t extensionsSupported;
 
   uint64_t vtype;
+  uint64_t vl;
+  uint16_t vstart;
+  uint32_t vlen;
 
   // constants
   uint8_t zreg;

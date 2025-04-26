@@ -166,7 +166,7 @@ static inline void vreg_name(uint8_t r, SStream *ss, RVContext *ctx) {
 }
 
 static inline void freg_or_reg_name(uint8_t r, SStream *ss, RVContext *ctx) {
-  if (HART_SUPPORTS(RISCV_Ext_Zfinx)) {
+  if (HART_SUPPORTS(Ext_Zfinx)) {
     reg_name(r, ss, ctx);
   } else {
     freg_name(r, ss, ctx);
@@ -1416,8 +1416,7 @@ static inline void dec_bits(uint64_t val, SStream *ss, RVContext *ctx,
 }
 
 #define DEF_DEC_BITS(n)                                                        \
-  static inline void dec_bits_##n(uint64_t val, SStream *ss,                   \
-                                  RVContext *ctx) {                            \
+  static inline void dec_bits_##n(uint64_t val, SStream *ss, RVContext *ctx) { \
     dec_bits(val, ss, ctx, n);                                                 \
   }
 DEF_DEC_BITS(1)
