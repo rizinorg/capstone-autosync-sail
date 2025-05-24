@@ -1,8 +1,8 @@
 #ifndef __RISCV_CONTEXT_H__
 #define __RISCV_CONTEXT_H__
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 // MISA fields
 #define MISA_A (1UL << 0)  // Atomic extension

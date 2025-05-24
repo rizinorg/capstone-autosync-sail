@@ -14,7 +14,9 @@ let single_operand_to_c index operand walker =
         match regfile with
         | Base -> "AS_GEN_PURPOSE_REG"
         | Float_or_Double -> "AS_FLOAT_REG"
-        | Base_or_Float -> "AS_GEN_PURPOSE_REG"
+        (* assume the compressed register is a general purpose register, true for most cases *)
+        (* float cases will be patched manually later *)
+        | Base_or_Float -> "AS_COMPRESSED_GEN_PURPOSE_REG"
         | Vector -> "AS_VECTOR_REG"
       in
       let op_indexing = "ops[" ^ string_of_int index ^ "]" in

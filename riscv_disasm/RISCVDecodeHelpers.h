@@ -248,7 +248,8 @@ static inline bool currentlyEnabled(ExtensionType t, RVContext *ctx) {
   case RISCV_Ext_Svpbmt:
     return 0;
   case RISCV_Ext_Sscofpmf:
-    return HART_SUPPORTS(Ext_Sscofpmf) && currentlyEnabled(RISCV_Ext_Zihpm, ctx);
+    return HART_SUPPORTS(Ext_Sscofpmf) &&
+           currentlyEnabled(RISCV_Ext_Zihpm, ctx);
   case RISCV_Ext_Smcntrpmf:
     return HART_SUPPORTS(Ext_Smcntrpmf) &&
            currentlyEnabled(RISCV_Ext_Zicntr, ctx);
@@ -348,13 +349,13 @@ static inline bool validDoubleRegs2(uint8_t rs1, uint8_t rd, RVContext *ctx) {
 }
 
 static inline bool validDoubleRegs3(uint8_t rs2, uint8_t rs1, uint8_t rd,
-                                      RVContext *ctx) {
+                                    RVContext *ctx) {
   uint8_t regs[] = {rs2, rs1, rd, 0xFF};
   return validDoubleRegsN(regs, ctx);
 }
 
 static inline bool validDoubleRegs4(uint8_t rs3, uint8_t rs2, uint8_t rs1,
-                                      uint8_t rd, RVContext *ctx) {
+                                    uint8_t rd, RVContext *ctx) {
   uint8_t regs[] = {rs3, rs2, rs1, rd, 0xFF};
   return validDoubleRegsN(regs, ctx);
 }
@@ -409,19 +410,18 @@ static inline float get_lmul(int32_t lpow) {
   return (float)(~0);
 }
 
-static inline bool zvk_check_encdec(int32_t egw, int32_t egs,
-                                      RVContext *ctx) {
+static inline bool zvk_check_encdec(int32_t egw, int32_t egs, RVContext *ctx) {
   return (ctx->vl % egs == 0) && (ctx->vstart % egs == 0) &&
          (get_lmul(get_lmul_pow(ctx)) * ctx->vlen >= egw);
 }
 
 static inline bool zvk_valid_reg_overlap(uint8_t rs, uint8_t rd,
-                                           int32_t emul_pow) {
+                                         int32_t emul_pow) {
   uint64_t reg_group_size = (emul_pow > 0) ? 1 << emul_pow : 1;
   return (rs + reg_group_size <= rd) || (rd + reg_group_size <= rs);
 }
 static inline bool zvknhab_check_encdec(uint8_t vs2, uint8_t vs1, uint8_t vd,
-                                          RVContext *ctx) {
+                                        RVContext *ctx) {
   uint32_t sew = get_sew(ctx);
   int32_t lmulpow = get_lmul_pow(ctx);
   return zvk_check_encdec(sew, 4, ctx) &&

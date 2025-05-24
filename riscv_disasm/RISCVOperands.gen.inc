@@ -39,7 +39,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_SRAI_HINT: {
     *op_count = 1;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_srai_hint);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_srai_hint);
     ops[0].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
@@ -85,10 +85,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_flw.uimm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_flw.rsc);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_flw.rsc);
     ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_flw.rdc);
+    ops[2].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_flw.rdc);
     ops[2].access = CS_AC_WRITE;
     break;
   }
@@ -180,17 +180,17 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_ADDW: {
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_addw.rsd);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_addw.rsd);
     ops[0].access = CS_AC_READ | CS_AC_WRITE;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_addw.rs2);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_addw.rs2);
     ops[1].access = CS_AC_READ;
     break;
   }
   case RISCV_C_ADDI4SPN: {
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_addi4spn.rdc);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_addi4spn.rdc);
     ops[0].access = CS_AC_WRITE;
     ops[1].type = RISCV_OP_IMM;
     ops[1].imm = tree->ast_node.c_addi4spn.nzimm;
@@ -203,10 +203,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_fsd.uimm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_fsd.rsc1);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_fsd.rsc1);
     ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_fsd.rsc2);
+    ops[2].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_fsd.rsc2);
     ops[2].access = CS_AC_READ;
     break;
   }
@@ -367,7 +367,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_ZEXT_H: {
     *op_count = 1;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_zext_h);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_zext_h);
     ops[0].access = CS_AC_READ;
     break;
   }
@@ -419,10 +419,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_lbu.uimm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lbu.rdc);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_lbu.rdc);
     ops[1].access = CS_AC_WRITE;
     ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lbu.rs1c);
+    ops[2].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_lbu.rs1c);
     ops[2].access = CS_AC_READ;
     break;
   }
@@ -465,7 +465,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_srai.shamt;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_srai.rsd);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_srai.rsd);
     ops[1].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
@@ -662,7 +662,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_srli.shamt;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_srli.rsd);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_srli.rsd);
     ops[1].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
@@ -791,10 +791,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_sb.uimm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sb.rs1c);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_sb.rs1c);
     ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sb.rs2c);
+    ops[2].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_sb.rs2c);
     ops[2].access = CS_AC_READ;
     break;
   }
@@ -954,7 +954,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_bnez.imm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_bnez.rs);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_bnez.rs);
     ops[1].access = CS_AC_READ;
     break;
   }
@@ -1147,10 +1147,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_XOR: {
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_xor.rsd);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_xor.rsd);
     ops[0].access = CS_AC_READ | CS_AC_WRITE;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_xor.rs2);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_xor.rs2);
     ops[1].access = CS_AC_READ;
     break;
   }
@@ -1278,10 +1278,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_ld.uimm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_ld.rsc);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_ld.rsc);
     ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_ld.rdc);
+    ops[2].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_ld.rdc);
     ops[2].access = CS_AC_WRITE;
     break;
   }
@@ -1321,7 +1321,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_NOT: {
     *op_count = 1;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_not);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_not);
     ops[0].access = CS_AC_READ;
     break;
   }
@@ -1444,10 +1444,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_SUB: {
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sub.rsd);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_sub.rsd);
     ops[0].access = CS_AC_READ | CS_AC_WRITE;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sub.rs2);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_sub.rs2);
     ops[1].access = CS_AC_READ;
     break;
   }
@@ -1496,10 +1496,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_sw.uimm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sw.rsc1);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_sw.rsc1);
     ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sw.rsc2);
+    ops[2].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_sw.rsc2);
     ops[2].access = CS_AC_READ;
     break;
   }
@@ -1509,10 +1509,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_fsw.uimm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_fsw.rsc1);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_fsw.rsc1);
     ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_fsw.rsc2);
+    ops[2].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_fsw.rsc2);
     ops[2].access = CS_AC_READ;
     break;
   }
@@ -1585,7 +1585,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_SEXT_H: {
     *op_count = 1;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sext_h);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_sext_h);
     ops[0].access = CS_AC_READ;
     break;
   }
@@ -1717,7 +1717,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_beqz.imm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_beqz.rs);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_beqz.rs);
     ops[1].access = CS_AC_READ;
     break;
   }
@@ -1833,7 +1833,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_ZEXT_B: {
     *op_count = 1;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_zext_b);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_zext_b);
     ops[0].access = CS_AC_READ;
     break;
   }
@@ -1981,20 +1981,20 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_lw.uimm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lw.rsc);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_lw.rsc);
     ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lw.rdc);
+    ops[2].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_lw.rdc);
     ops[2].access = CS_AC_WRITE;
     break;
   }
   case RISCV_C_OR: {
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_or.rsd);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_or.rsd);
     ops[0].access = CS_AC_READ | CS_AC_WRITE;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_or.rs2);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_or.rs2);
     ops[1].access = CS_AC_READ;
     break;
   }
@@ -2268,10 +2268,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_sh.uimm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sh.rs1c);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_sh.rs1c);
     ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sh.rs2c);
+    ops[2].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_sh.rs2c);
     ops[2].access = CS_AC_READ;
     break;
   }
@@ -2301,10 +2301,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_SUBW: {
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_subw.rsd);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_subw.rsd);
     ops[0].access = CS_AC_READ | CS_AC_WRITE;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_subw.rs2);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_subw.rs2);
     ops[1].access = CS_AC_READ;
     break;
   }
@@ -2393,7 +2393,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_andi.imm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_andi.rsd);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_andi.rsd);
     ops[1].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
@@ -2523,10 +2523,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_MUL: {
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_mul.rsdc);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_mul.rsdc);
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_mul.rs2c);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_mul.rs2c);
     ops[1].access = CS_AC_READ;
     break;
   }
@@ -2684,10 +2684,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_sd.uimm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sd.rsc1);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_sd.rsc1);
     ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sd.rsc2);
+    ops[2].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_sd.rsc2);
     ops[2].access = CS_AC_READ;
     break;
   }
@@ -2948,10 +2948,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_fld.uimm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_fld.rsc);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_fld.rsc);
     ops[1].access = CS_AC_READ;
     ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_fld.rdc);
+    ops[2].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_fld.rdc);
     ops[2].access = CS_AC_WRITE;
     break;
   }
@@ -3116,7 +3116,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_SEXT_B: {
     *op_count = 1;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_sext_b);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_sext_b);
     ops[0].access = CS_AC_READ;
     break;
   }
@@ -3146,10 +3146,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_lhu.uimm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lhu.rdc);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_lhu.rdc);
     ops[1].access = CS_AC_WRITE;
     ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lhu.rs1c);
+    ops[2].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_lhu.rs1c);
     ops[2].access = CS_AC_READ;
     break;
   }
@@ -3499,10 +3499,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_AND: {
     *op_count = 2;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_and.rsd);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_and.rsd);
     ops[0].access = CS_AC_READ | CS_AC_WRITE;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_and.rs2);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_and.rs2);
     ops[1].access = CS_AC_READ;
     break;
   }
@@ -3546,7 +3546,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_ZEXT_W: {
     *op_count = 1;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_zext_w);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_zext_w);
     ops[0].access = CS_AC_READ;
     break;
   }
@@ -3690,7 +3690,7 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
   case RISCV_C_SRLI_HINT: {
     *op_count = 1;
     ops[0].type = RISCV_OP_REG;
-    ops[0].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_srli_hint);
+    ops[0].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_srli_hint);
     ops[0].access = CS_AC_READ | CS_AC_WRITE;
     break;
   }
@@ -3740,10 +3740,10 @@ static void fill_operands(struct ast *tree, cs_riscv_op *ops,
     ops[0].imm = tree->ast_node.c_lh.uimm;
     ops[0].access = CS_AC_READ;
     ops[1].type = RISCV_OP_REG;
-    ops[1].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lh.rdc);
+    ops[1].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_lh.rdc);
     ops[1].access = CS_AC_WRITE;
     ops[2].type = RISCV_OP_REG;
-    ops[2].reg = AS_GEN_PURPOSE_REG(tree->ast_node.c_lh.rs1c);
+    ops[2].reg = AS_COMPRESSED_GEN_PURPOSE_REG(tree->ast_node.c_lh.rs1c);
     ops[2].access = CS_AC_READ;
     break;
   }
