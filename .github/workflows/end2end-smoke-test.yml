@@ -42,6 +42,7 @@ jobs:
                 cd generator && source ~/.bash_profile                
                 mv riscv_disasm old_output
                 eval $(opam config env)
+                dune build
                 OCAMLRUNPARAM=b dune exec --profile release -- capstone-autosync-sail -f conf/sail-files-paths.txt
             
             - name: Installing clang-format to automatically format the generated source code
