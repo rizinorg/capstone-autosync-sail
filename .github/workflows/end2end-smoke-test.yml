@@ -6,11 +6,9 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Set up the Ocaml toolchain
-              run: |
-                sudo apt-get install bubblewrap
-                echo "" | bash -c "sh <(curl -fsSL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)"
-                echo "1" | opam init
-                opam install dune
+              uses: ocaml/setup-ocaml@v3
+              with:
+                ocaml-compiler: 5
             
             - name: Fetch the generator sources 
               uses: actions/checkout@v4
@@ -31,79 +29,123 @@ jobs:
             
             - name: Install generator dependencies
               run: |
+                set -x
                 cd generator && source ~/.bash_profile
                 export OPAMCONFIRMLEVEL=yes
                 opam update
-
-                opam install sail=0.18
+                
+                sudo apt-get install build-essential libgmp-dev z3 pkg-config
+                opam install sail=0.19
                 sudo apt-get install z3
                 opam install . --deps-only
-
             - name: Running the generator
               run: |
+                set -x
                 cd generator && source ~/.bash_profile                
                 mv riscv_disasm old_output
+                eval $(opam config env)
 
-                dune exec --profile release -- riscv_disasm_from_sail -f conf/sail-files-paths.txt
+                OCAMLRUNPARAM=b dune exec --profile release -- capstone_autosync_sail -f conf/sail-files-paths.txt
             
-            - name: Installing clang-format to automatically format the source code
+            - name: Installing clang-format to automatically format the generated source code
               run: |
+                set -x
                 python -m pip install clang-format
+            
+            - name: Fetch the capstone sources (for SStream.c and riscv.h specifically)
+              uses: actions/checkout@v4
+              with:
+                repository: moste00/capstone
+                ref: riscv_disassembly_using_sail
+                path: capstone
 
             - name: Checking the generated code compiles and is identical to the committed generated code
               run: |
+                set -x
                 cd generator/riscv_disasm
                 
                 touch test_main.c
-                echo '#include "riscv_decode.gen.inc"' >> test_main.c 
+                echo '#include "RISCVAst.gen.inc"' >> test_main.c 
                 echo >> test_main.c
-                echo '#include "riscv_decode_compressed.gen.inc"' >> test_main.c
+                echo '#include "RISCVDecode.gen.inc"' >> test_main.c 
                 echo >> test_main.c
-                echo '#include "riscv_ast2str.gen.inc"' >> test_main.c
+                echo '#include "RISCVDecodeCompressed.gen.inc"' >> test_main.c
                 echo >> test_main.c
-                echo '#include "riscv_insn_mapping.gen.inc"' >> test_main.c
+                echo '#include "RISCVAst2Str.gen.inc"' >> test_main.c
+                echo >> test_main.c
+                echo '#include "RISCVAst2StrTbls.gen.inc"' >> test_main.c
+                echo >> test_main.c
+                echo '#include "RISCVInsn.gen.inc"' >> test_main.c
+                echo >> test_main.c
+                echo '#include "RISCVInsnMappings.gen.inc"' >> test_main.c
+                echo >> test_main.c
+                echo '#include "RISCVOperands.gen.inc"' >> test_main.c
                 echo >> test_main.c
                 echo 'void main() {}' >> test_main.c
                 
-                mv ../old_output/riscv_helpers_ast2str.h riscv_helpers_ast2str.h
-                mv ../old_output/riscv_helpers_rvconf.h riscv_helpers_rvconf.h
+                mv ../old_output/RISCVAst2StrHelpers.h   RISCVAst2StrHelpers.h
+                mv ../old_output/RISCVDecodeHelpers.h    RISCVDecodeHelpers.h
+                mv ../old_output/RISCVOperandsHelpers.h  RISCVOperandsHelpers.h
+                mv ../old_output/RISCVRVContextHelpers.h RISCVRVContextHelpers.h
 
-                gcc test_main.c || { echo "Failure: Trying to compile the tool-generated C code failed."; exit 1; }
-                
+                # cs_vsnprintf is the same as vsnprintf outside of windows
+                # using vsnprintf directly allows avoiding to compile most of Capstone
+                sed 's/cs_vsnprintf/vsnprintf/g' ../../capstone/SStream.c -i
+
+                # for includes to "../../SStream.h" to work in generated code
+                # also for includes to "../../cs_priv.h" to work 
+                cp ../../capstone/*.h ../../
+                mkdir -p ../../include/capstone/
+                cp ../../capstone/include/capstone/*.h ../../include/capstone/
+
+                # try compiling all generated code
+                # -I../../capstone/include to setup the include directory for <...> includes in SStream.c
+                gcc -I../../capstone/include \
+                    test_main.c ../../capstone/SStream.c \
+                    || { \
+                    echo "Failure: Trying to compile the tool-generated C code failed."; \
+                    exit 1; \
+                    }
+                ll a.out && echo "Compilation Succeeded, formatting file using clang-format"
                 clang-format -i *
 
-                if ! diff -q riscv_ast.gen.inc ../old_output/riscv_ast.gen.inc > /dev/null 2>&1; then
+                if ! diff -q RISCVAst.gen.inc ../old_output/RISCVAst.gen.inc > /dev/null 2>&1; then
                   echo "Failure: The tool-generated ast definition differ from the one committed in the repo."
                   exit 1
                 fi
                 
-                if ! diff -q riscv_decode.gen.inc ../old_output/riscv_decode.gen.inc > /dev/null 2>&1; then
+                if ! diff -q RISCVDecode.gen.inc ../old_output/RISCVDecode.gen.inc > /dev/null 2>&1; then
                   echo "Failure: The tool-generated decoding logic differ from the one committed in the repo."
                   exit 1
                 fi
 
-                if ! diff -q riscv_decode_compressed.gen.inc ../old_output/riscv_decode_compressed.gen.inc > /dev/null 2>&1; then
+                if ! diff -q RISCVDecodeCompressed.gen.inc ../old_output/RISCVDecodeCompressed.gen.inc > /dev/null 2>&1; then
                   echo "Failure: The tool-generated compressed (16-bit) decoding logic differ from the one committed in the repo."
                   exit 1
                 fi
 
-                if ! diff -q riscv_ast2str_tbls.gen.inc ../old_output/riscv_ast2str_tbls.gen.inc > /dev/null 2>&1; then
+                if ! diff -q RISCVAst2StrTbls.gen.inc ../old_output/RISCVAst2StrTbls.gen.inc > /dev/null 2>&1; then
                   echo "Failure: The tool-generated stringification helpers differ from the one committed in the repo"
                   exit 1
                 fi
 
-                if ! diff -q riscv_ast2str.gen.inc ../old_output/riscv_ast2str.gen.inc > /dev/null 2>&1; then
+                if ! diff -q RISCVAst2Str.gen.inc ../old_output/RISCVAst2Str.gen.inc > /dev/null 2>&1; then
                   echo "Failure: The tool-generated ast stringification logic differ from the one committed in the repo"
                   exit 1
                 fi
                 
-                if ! diff -q riscv_insn_mapping.gen.inc ../old_output/riscv_insn_mapping.gen.inc > /dev/null 2>&1; then
+                if ! diff -q RISCVInsnMappings.gen.inc ../old_output/RISCVInsnMappings.gen.inc > /dev/null 2>&1; then
                   echo "Failure: The tool-generated ast-id->instruction-id mapping logic differ from the one committed in the repo"
                   exit 1
                 fi
 
-                if ! diff -q riscv_insn.gen.inc ../old_output/riscv_insn.gen.inc > /dev/null 2>&1; then
+                if ! diff -q RISCVInsn.gen.inc ../old_output/RISCVInsn.gen.inc > /dev/null 2>&1; then
                   echo "Failure: The tool-generated instruction ids differ from the one committed in the repo"
+                  exit 1
+                fi
+
+                if ! diff -q RISCVOperands.gen.inc ../old_output/RISCVOperands.gen.inc > /dev/null 2>&1; then
+                  echo "Failure: The tool-generated operands extraction logic differ from the one committed in the repo"
                   exit 1
                 fi
 

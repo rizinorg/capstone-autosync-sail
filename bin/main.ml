@@ -70,7 +70,8 @@ let write_c_file ?(additional_includes = []) name code =
   Printf.fprintf oc "%s" "\n #endif\n";
   close_out oc
 
-let sailpath = Unix.getenv "HOME" ^ "/.opam/default/share/sail/"
+let sailpath = (Unix.getenv "OPAM_SWITCH_PREFIX") ^ "/share/sail/"
+let () = print_endline ("SAIL PATH : " ^ sailpath)
 
 let paths_filename = ref ""
 

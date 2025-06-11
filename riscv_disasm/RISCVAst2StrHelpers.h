@@ -140,7 +140,7 @@ static inline void reg_name(uint8_t r, SStream *ss, RVContext *ctx) {
 }
 
 const static char *creg_names[] = {"s0", "s1", "a0", "a1",
-                                         "a2", "a3", "a4", "a5"};
+                                   "a2", "a3", "a4", "a5"};
 static inline void creg_name(uint8_t r, SStream *ss, RVContext *ctx) {
   CS_ASSERT(r < 8);
   SStream_concat(ss, creg_names[r]);

@@ -19,7 +19,7 @@
 // the transformation is a straightforward shift by 1
 #define AS_GEN_PURPOSE_REG(r) ((r) + 1)
 #define IS_GEN_PURPOSE_REG(r) ((r) <= 32)
-#define INDEX_FROM_GEN_PURPOSE_REG(r) ((r) - 1)
+#define INDEX_FROM_GEN_PURPOSE_REG(r) ((r)-1)
 
 // (half-)floats and doubles are more complex
 // their enum values come after the values for the general purpose regs,
@@ -28,22 +28,22 @@
 // half float enum values start at 33 and increment by 3 each time (33, 36, 39,
 // ...)
 #define AS_HALF_FLOAT_REG(r) ((3 * (r)) + 33)
-#define INDEX_FROM_HALF_FLOAT_REG(r) (((r) - 33)/3)
+#define INDEX_FROM_HALF_FLOAT_REG(r) (((r)-33) / 3)
 
 // and float enum values are 34, 37, 40, ...
 #define AS_FLOAT_REG(r) ((3 * (r)) + 34)
 #define IS_FLOAT_REG(r) ((r) >= 34 && (r) <= 127 && ((r) % 3 == 1))
-#define INDEX_FROM_FLOAT_REG(r) (((r) - 34)/3)
+#define INDEX_FROM_FLOAT_REG(r) (((r)-34) / 3)
 
 // and double enum values are 35, 38, 41, ...
 #define AS_DOUBLE_REG(r) ((3 * (r)) + 35)
 #define IS_DOUBLE_REG(r) ((r) >= 35 && (r) <= 128 && ((r) % 3 == 2))
-#define INDEX_FROM_DOUBLE_REG(r) (((r) - 35)/3)
+#define INDEX_FROM_DOUBLE_REG(r) (((r)-35) / 3)
 
 // vector registers are 129, ..., 160
 #define AS_VECTOR_REG(r) ((r) + 129)
 #define IS_VECTOR_REG(r) ((r) >= 129)
-#define INDEX_FROM_VECTOR_REG(r) ((r) - 129)
+#define INDEX_FROM_VECTOR_REG(r) ((r)-129)
 
 #define AS_COMPRESSED_GEN_PURPOSE_REG(r) AS_GEN_PURPOSE_REG((r) + 8)
 #define AS_COMPRESSED_FLOAT_REG(r) AS_FLOAT_REG((r) + 8)
@@ -65,8 +65,8 @@
 // dedicated instructions for accessing memory and it doesn't access memory
 // outside of those instructions (unlike, say, x86) Additionally, some registers
 // are inferred wrong for some special instructions, we also manually edit those
-static inline void patch_operands(struct ast *tree, cs_riscv_op *ops, uint8_t *op_count,
-                    RVContext *ctx) {
+static inline void patch_operands(struct ast *tree, cs_riscv_op *ops,
+                                  uint8_t *op_count, RVContext *ctx) {
   switch (tree->ast_node_type) {
   case RISCV_LOADRES: {
     // the read from rs1 is falsely inferred as a register read
@@ -141,9 +141,10 @@ static inline void patch_operands(struct ast *tree, cs_riscv_op *ops, uint8_t *o
     break;
   }
 
-  // TODO: figure out a more detailed way of representing this instructions' addressing mode
+  // TODO: figure out a more detailed way of representing this instructions'
+  // addressing mode
   case RISCV_ZICBOZ:
-  case RISCV_ZICBOM: 
+  case RISCV_ZICBOM:
   case RISCV_VLSEGTYPE:
   case RISCV_VLSEGFFTYPE:
   case RISCV_VSSEGTYPE:
@@ -155,10 +156,11 @@ static inline void patch_operands(struct ast *tree, cs_riscv_op *ops, uint8_t *o
   case RISCV_VLRETYPE:
   case RISCV_VSRETYPE:
   case RISCV_VMTYPE: {
-    // for now we just give up and say that the offset is unknown, 
-    // but it's possible to write parameters for a symbolic formula for each instruction type 
-    // (for example if an instructions performs memory accesses according to the formula a*X+b, we could
-    // a, b, and the lower and upper bounds for X are assembly-time parameters that could be extracted)
+    // for now we just give up and say that the offset is unknown,
+    // but it's possible to write parameters for a symbolic formula for each
+    // instruction type (for example if an instructions performs memory accesses
+    // according to the formula a*X+b, we could a, b, and the lower and upper
+    // bounds for X are assembly-time parameters that could be extracted)
     for (uint32_t i = 0; i < *op_count; i++) {
       if (ops[i].type == RISCV_OP_MEM) {
         ops[i].mem.type = RISCV_OP_MEM_RUNTIME;
@@ -167,7 +169,8 @@ static inline void patch_operands(struct ast *tree, cs_riscv_op *ops, uint8_t *o
     break;
   }
 
-  default: break;
+  default:
+    break;
   }
 
   // fix up special compressed instructions, which are assumed by the generator
@@ -180,7 +183,8 @@ static inline void patch_operands(struct ast *tree, cs_riscv_op *ops, uint8_t *o
   case RISCV_C_FLDSP: {
     ops[0].type = RISCV_OP_MEM;
     ops[0].mem.base = sp;
-    ops[0].mem.disp = SIGN_EXTEND(ZERO_EXTEND(tree->ast_node.c_fldsp.uimm << 3));
+    ops[0].mem.disp =
+        SIGN_EXTEND(ZERO_EXTEND(tree->ast_node.c_fldsp.uimm << 3));
     ops[0].access = CS_AC_READ;
     break;
   }
@@ -188,7 +192,8 @@ static inline void patch_operands(struct ast *tree, cs_riscv_op *ops, uint8_t *o
   case RISCV_C_FSDSP: {
     ops[0].type = RISCV_OP_MEM;
     ops[0].mem.base = sp;
-    ops[0].mem.disp = SIGN_EXTEND(ZERO_EXTEND(tree->ast_node.c_fsdsp.uimm << 3));
+    ops[0].mem.disp =
+        SIGN_EXTEND(ZERO_EXTEND(tree->ast_node.c_fsdsp.uimm << 3));
     ops[0].access = CS_AC_WRITE;
     break;
   }
@@ -215,7 +220,8 @@ static inline void patch_operands(struct ast *tree, cs_riscv_op *ops, uint8_t *o
     *op_count = *op_count - 1;
     break;
   }
-  default: break;
+  default:
+    break;
   }
 
   // determine if the instruction has float operands but the FP width is 16 bits
