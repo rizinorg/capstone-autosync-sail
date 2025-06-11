@@ -6,11 +6,9 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Set up the Ocaml toolchain
-              run: |
-                sudo apt-get install bubblewrap
-                echo "" | bash -c "sh <(curl -fsSL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)"
-                echo "1" | opam init
-                opam install dune
+              uses: ocaml/setup-ocaml@v3
+              with:
+                ocaml-compiler: 5
             
             - name: Fetch the generator sources 
               uses: actions/checkout@v4
@@ -35,7 +33,7 @@ jobs:
                 export OPAMCONFIRMLEVEL=yes
                 opam update
 
-                opam install sail=0.18
+                opam install sail=0.19
                 sudo apt-get install z3
                 opam install . --deps-only
 
