@@ -36,12 +36,19 @@ jobs:
                 opam install sail=0.19
                 sudo apt-get install z3
                 opam install . --deps-only
+                #DEBUGGING 
+                sail --version
+                ls ~/.opam && echo "-------------------------" && ls ~/.opam/default && echo "---------------------------" && ls ~/.opam/default/share
+                echo "-----------------------------------" && ls ~/.opam/default/share/sail
 
             - name: Running the generator
               run: |
                 cd generator && source ~/.bash_profile                
                 mv riscv_disasm old_output
                 eval $(opam config env)
+
+                ls ~/.opam && echo "-------------------------" && ls ~/.opam/default && echo "---------------------------" && ls ~/.opam/default/share
+                echo "-----------------------------------" && ls ~/.opam/default/share/sail
                 dune build --profile release
                 OCAMLRUNPARAM=b dune exec --profile release -- capstone_autosync_sail -f conf/sail-files-paths.txt
             
