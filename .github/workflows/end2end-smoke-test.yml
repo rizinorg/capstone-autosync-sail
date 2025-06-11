@@ -43,7 +43,7 @@ jobs:
                 mv riscv_disasm old_output
                 eval $(opam config env)
                 dune build --profile release
-                OCAMLRUNPARAM=b dune exec --profile release -- capstone-autosync-sail -f conf/sail-files-paths.txt
+                OCAMLRUNPARAM=b dune exec --profile release -- capstone_autosync_sail -f conf/sail-files-paths.txt
             
             - name: Installing clang-format to automatically format the generated source code
               run: |
