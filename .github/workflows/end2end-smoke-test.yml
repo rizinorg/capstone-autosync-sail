@@ -36,13 +36,12 @@ jobs:
                 opam install sail=0.19
                 sudo apt-get install z3
                 opam install . --deps-only
-                opam install dune
 
             - name: Running the generator
               run: |
                 cd generator && source ~/.bash_profile                
                 mv riscv_disasm old_output
-
+                eval $(opam config env)
                 dune exec --profile release -- riscv_disasm_from_sail -f conf/sail-files-paths.txt
             
             - name: Installing clang-format to automatically format the generated source code
